@@ -1,0 +1,1173 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>アセット管理 - ポータルダッシュボード</title>
+  <style>
+    /* ========================================
+       リセット・ベース
+    ======================================== */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background-color: #f5f5f5;
+      color: #333;
+      line-height: 1.6;
+    }
+
+    a {
+      color: #1a73e8;
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    /* ========================================
+       ヘッダー
+    ======================================== */
+    .header {
+      background-color: #333;
+      color: white;
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .header h1 {
+      font-size: 18px;
+      font-weight: 500;
+    }
+
+    .header-nav {
+      display: flex;
+      gap: 16px;
+    }
+
+    .header-nav a {
+      color: white;
+      opacity: 0.9;
+      font-size: 13px;
+    }
+
+    .header-nav a:hover {
+      opacity: 1;
+      text-decoration: none;
+    }
+
+    /* ========================================
+       メインレイアウト
+    ======================================== */
+    .main {
+      display: flex;
+      height: calc(100vh - 49px);
+    }
+
+    .list-panel {
+      width: 55%;
+      border-right: 1px solid #e0e0e0;
+      background: white;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .detail-panel {
+      width: 45%;
+      background: #fafafa;
+      overflow-y: auto;
+    }
+
+    /* ========================================
+       ツールバー
+    ======================================== */
+    .toolbar {
+      padding: 12px 16px;
+      border-bottom: 1px solid #e0e0e0;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .search-box {
+      flex: 1;
+      min-width: 150px;
+    }
+
+    .search-box input {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+
+    .filter-group {
+      display: flex;
+      gap: 8px;
+    }
+
+    .filter-group select {
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 13px;
+      background: white;
+    }
+
+    .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: #1a73e8;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #1557b0;
+    }
+
+    .btn-success {
+      background: #34a853;
+      color: white;
+    }
+
+    .btn-success:hover {
+      background: #2d9249;
+    }
+
+    .btn-danger {
+      background: #c5221f;
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: #a31b19;
+    }
+
+    .btn-secondary {
+      background: #f5f5f5;
+      color: #333;
+      border: 1px solid #ddd;
+    }
+
+    .btn-secondary:hover {
+      background: #e8e8e8;
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* ========================================
+       テーブル
+    ======================================== */
+    .table-container {
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    thead {
+      position: sticky;
+      top: 0;
+      background: #f5f5f5;
+      z-index: 1;
+    }
+
+    th, td {
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    th {
+      font-weight: 500;
+      color: #666;
+    }
+
+    tbody tr {
+      cursor: pointer;
+    }
+
+    tbody tr:hover {
+      background: #f5f5f5;
+    }
+
+    tbody tr.selected {
+      background: #e8f0fe;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .badge-type {
+      background: #e8f0fe;
+      color: #1a73e8;
+    }
+
+    .badge-unused {
+      background: #fef7e0;
+      color: #b06000;
+    }
+
+    .url-cell {
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* ========================================
+       詳細パネル
+    ======================================== */
+    .detail-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid #e0e0e0;
+      background: white;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .detail-header h2 {
+      font-size: 16px;
+      font-weight: 500;
+    }
+
+    .detail-body {
+      padding: 20px;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      color: #666;
+      margin-bottom: 4px;
+    }
+
+    .form-group label.required::after {
+      content: '*';
+      color: #c5221f;
+      margin-left: 2px;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+      outline: none;
+      border-color: #1a73e8;
+    }
+
+    .form-group input:disabled,
+    .form-group select:disabled {
+      background: #f5f5f5;
+      color: #999;
+    }
+
+    .form-group .hint {
+      font-size: 11px;
+      color: #999;
+      margin-top: 4px;
+    }
+
+    .form-group .warning {
+      font-size: 11px;
+      color: #b06000;
+      margin-top: 4px;
+    }
+
+    .form-row {
+      display: flex;
+      gap: 16px;
+    }
+
+    .form-row .form-group {
+      flex: 1;
+    }
+
+    .detail-actions {
+      padding: 16px 20px;
+      border-top: 1px solid #e0e0e0;
+      background: white;
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+    }
+
+    /* ========================================
+       参照先ビュー
+    ======================================== */
+    .usages-section {
+      margin-top: 20px;
+      padding: 16px;
+      background: white;
+      border-radius: 8px;
+      border: 1px solid #e0e0e0;
+    }
+
+    .usages-section h3 {
+      font-size: 14px;
+      font-weight: 500;
+      color: #333;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .usages-section .count {
+      background: #e0e0e0;
+      color: #666;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 11px;
+    }
+
+    .usages-section .count.warning {
+      background: #fce8e6;
+      color: #c5221f;
+    }
+
+    .usages-list {
+      list-style: none;
+    }
+
+    .usages-list li {
+      padding: 8px 12px;
+      background: #f5f5f5;
+      border-radius: 4px;
+      margin-bottom: 4px;
+      font-size: 13px;
+    }
+
+    .usages-list .type-label {
+      color: #666;
+      font-size: 11px;
+    }
+
+    .usages-empty {
+      color: #999;
+      font-size: 13px;
+      text-align: center;
+      padding: 12px;
+    }
+
+    /* ========================================
+       プレビュー
+    ======================================== */
+    .preview-section {
+      margin-top: 20px;
+      padding: 16px;
+      background: white;
+      border-radius: 8px;
+      border: 1px solid #e0e0e0;
+    }
+
+    .preview-section h3 {
+      font-size: 14px;
+      font-weight: 500;
+      color: #333;
+      margin-bottom: 12px;
+    }
+
+    .preview-image {
+      max-width: 100%;
+      max-height: 150px;
+      border-radius: 4px;
+      background: #f5f5f5;
+    }
+
+    .preview-placeholder {
+      padding: 24px;
+      text-align: center;
+      color: #999;
+      font-size: 13px;
+      background: #f5f5f5;
+      border-radius: 4px;
+    }
+
+    /* ========================================
+       空状態
+    ======================================== */
+    .empty-state {
+      padding: 60px 20px;
+      text-align: center;
+      color: #999;
+    }
+
+    .empty-state .icon {
+      font-size: 48px;
+      margin-bottom: 12px;
+    }
+
+    /* ========================================
+       トースト
+    ======================================== */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 12px 24px;
+      background: #333;
+      color: white;
+      border-radius: 6px;
+      font-size: 13px;
+      z-index: 1000;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      animation: toast-in 0.3s ease;
+    }
+
+    .toast-success {
+      background: #34a853;
+    }
+
+    .toast-error {
+      background: #c5221f;
+    }
+
+    .toast-warning {
+      background: #ff9800;
+    }
+
+    @keyframes toast-in {
+      from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+      }
+    }
+
+    /* ========================================
+       ローディング
+    ======================================== */
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(255,255,255,0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .loading-spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid #e0e0e0;
+      border-top-color: #1a73e8;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* ========================================
+       確認ダイアログ
+    ======================================== */
+    .confirm-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1001;
+    }
+
+    .confirm-dialog {
+      background: white;
+      border-radius: 8px;
+      padding: 24px;
+      max-width: 400px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    }
+
+    .confirm-dialog h3 {
+      margin-bottom: 12px;
+      font-size: 16px;
+    }
+
+    .confirm-dialog p {
+      margin-bottom: 20px;
+      color: #666;
+      font-size: 14px;
+    }
+
+    .confirm-dialog .actions {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+    }
+  </style>
+</head>
+<body>
+  <!-- ヘッダー -->
+  <header class="header">
+    <h1>アセット管理</h1>
+    <nav class="header-nav">
+      <a href="?view=admin">管理トップ</a>
+      <a href="?view=portal">ポータルへ戻る</a>
+    </nav>
+  </header>
+
+  <!-- メイン -->
+  <main class="main">
+    <!-- 一覧パネル -->
+    <div class="list-panel">
+      <div class="toolbar">
+        <div class="search-box">
+          <input type="text" id="search-input" placeholder="ID または URL で検索...">
+        </div>
+        <div class="filter-group">
+          <select id="filter-type">
+            <option value="">全種別</option>
+            <option value="image">image</option>
+            <option value="icon">icon</option>
+            <option value="pdf">pdf</option>
+            <option value="video">video</option>
+            <option value="file">file</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" onclick="AssetAdmin.newAsset()">+ 新規作成</button>
+      </div>
+      <div class="table-container" id="table-container">
+        <div class="empty-state">
+          <div class="icon">...</div>
+          <p>読み込み中</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 詳細パネル -->
+    <div class="detail-panel" id="detail-panel">
+      <div class="empty-state">
+        <div class="icon">🖼</div>
+        <p>左のリストからアセットを選択<br>または「新規作成」をクリック</p>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    /* ========================================
+       アプリケーション状態
+    ======================================== */
+    const AssetAdmin = {
+      config: <?!= configJson ?>,
+      assets: [],
+      filteredAssets: [],
+      selectedAssetId: null,
+      isNew: false,
+      currentUsages: null,
+
+      /* ========================================
+         初期化
+      ======================================== */
+      init: function() {
+        console.log('AssetAdmin initialized');
+
+        // アセット一覧を配列に変換
+        this.assets = [];
+        const assetsMap = this.config.assets || {};
+        for (const assetId in assetsMap) {
+          this.assets.push(assetsMap[assetId]);
+        }
+
+        this.filteredAssets = [...this.assets];
+
+        // イベント設定
+        document.getElementById('search-input').addEventListener('input', () => this.applyFilters());
+        document.getElementById('filter-type').addEventListener('change', () => this.applyFilters());
+
+        // 一覧描画
+        this.renderTable();
+      },
+
+      /* ========================================
+         フィルタ適用
+      ======================================== */
+      applyFilters: function() {
+        const search = document.getElementById('search-input').value.toLowerCase();
+        const typeFilter = document.getElementById('filter-type').value;
+
+        this.filteredAssets = this.assets.filter(a => {
+          // 検索
+          if (search) {
+            const matchId = a.assetId.toLowerCase().includes(search);
+            const matchUrl = (a.url || '').toLowerCase().includes(search);
+            if (!matchId && !matchUrl) return false;
+          }
+
+          // 種別フィルタ
+          if (typeFilter && a.assetType !== typeFilter) return false;
+
+          return true;
+        });
+
+        this.renderTable();
+      },
+
+      /* ========================================
+         テーブル描画
+      ======================================== */
+      renderTable: function() {
+        const container = document.getElementById('table-container');
+
+        if (this.filteredAssets.length === 0) {
+          container.innerHTML = `
+            <div class="empty-state">
+              <div class="icon">📭</div>
+              <p>アセットがありません</p>
+            </div>
+          `;
+          return;
+        }
+
+        let html = `
+          <table>
+            <thead>
+              <tr>
+                <th>アセットID</th>
+                <th>種別</th>
+                <th>URL</th>
+                <th>代替テキスト</th>
+              </tr>
+            </thead>
+            <tbody>
+        `;
+
+        this.filteredAssets.forEach(a => {
+          const selectedClass = a.assetId === this.selectedAssetId ? ' selected' : '';
+
+          html += `
+            <tr class="${selectedClass}" onclick="AssetAdmin.selectAsset('${this.escapeHtml(a.assetId)}')">
+              <td>${this.escapeHtml(a.assetId)}</td>
+              <td><span class="badge badge-type">${this.escapeHtml(a.assetType)}</span></td>
+              <td class="url-cell" title="${this.escapeHtml(a.url)}">${this.escapeHtml(a.url)}</td>
+              <td>${this.escapeHtml(a.altText || '-')}</td>
+            </tr>
+          `;
+        });
+
+        html += '</tbody></table>';
+        container.innerHTML = html;
+      },
+
+      /* ========================================
+         アセット選択
+      ======================================== */
+      selectAsset: function(assetId) {
+        this.selectedAssetId = assetId;
+        this.isNew = false;
+        this.renderTable();
+        this.renderDetailForm();
+        this.loadUsages(assetId);
+      },
+
+      /* ========================================
+         新規作成
+      ======================================== */
+      newAsset: function() {
+        this.selectedAssetId = null;
+        this.isNew = true;
+        this.currentUsages = null;
+        this.renderDetailForm();
+      },
+
+      /* ========================================
+         参照先を読み込み
+      ======================================== */
+      loadUsages: function(assetId) {
+        google.script.run
+          .withSuccessHandler((result) => {
+            if (result.ok) {
+              this.currentUsages = result.usages;
+              this.renderUsages();
+            }
+          })
+          .withFailureHandler((error) => {
+            console.error('Load usages error:', error);
+          })
+          .getAssetUsages(assetId);
+      },
+
+      /* ========================================
+         詳細フォーム描画
+      ======================================== */
+      renderDetailForm: function() {
+        const panel = document.getElementById('detail-panel');
+        const asset = this.isNew
+          ? { assetId: '', assetType: 'image', url: '', altText: '', owner: '', memo: '' }
+          : this.assets.find(a => a.assetId === this.selectedAssetId);
+
+        if (!asset) {
+          panel.innerHTML = '<div class="empty-state"><div class="icon">...</div><p>アセットが見つかりません</p></div>';
+          return;
+        }
+
+        const title = this.isNew ? '新規アセット' : 'アセット編集';
+        const idDisabled = this.isNew ? '' : 'disabled';
+
+        panel.innerHTML = `
+          <div class="detail-header">
+            <h2>${title}</h2>
+            <button class="btn btn-secondary" onclick="AssetAdmin.closeDetail()">×</button>
+          </div>
+          <div class="detail-body">
+            <div class="form-row">
+              <div class="form-group">
+                <label class="required">アセットID</label>
+                <input type="text" id="form-asset-id" value="${this.escapeHtml(asset.assetId)}" ${idDisabled}>
+                <div class="hint">英数字・_・- 推奨（例: HEADER_001, ICON_mail）</div>
+              </div>
+              <div class="form-group">
+                <label class="required">種別</label>
+                <select id="form-asset-type">
+                  <option value="image"${asset.assetType === 'image' ? ' selected' : ''}>image</option>
+                  <option value="icon"${asset.assetType === 'icon' ? ' selected' : ''}>icon</option>
+                  <option value="pdf"${asset.assetType === 'pdf' ? ' selected' : ''}>pdf</option>
+                  <option value="video"${asset.assetType === 'video' ? ' selected' : ''}>video</option>
+                  <option value="file"${asset.assetType === 'file' ? ' selected' : ''}>file</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="required">URL</label>
+              <input type="text" id="form-url" value="${this.escapeHtml(asset.url || '')}">
+              <div class="hint">画像/PDF等のURLを入力（https://... または data:...）</div>
+            </div>
+
+            <div class="form-group">
+              <label>代替テキスト（alt）</label>
+              <input type="text" id="form-alt-text" value="${this.escapeHtml(asset.altText || '')}">
+              <div class="hint">アクセシビリティ用の代替テキスト</div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>管理者</label>
+                <input type="text" id="form-owner" value="${this.escapeHtml(asset.owner || '')}">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>メモ</label>
+              <textarea id="form-memo" rows="2">${this.escapeHtml(asset.memo || '')}</textarea>
+            </div>
+
+            ${!this.isNew ? this.renderPreview(asset) : ''}
+            ${!this.isNew ? '<div id="usages-container"></div>' : ''}
+          </div>
+
+          <div class="detail-actions">
+            ${!this.isNew ? '<button class="btn btn-danger" onclick="AssetAdmin.hideAsset()">削除（非表示）</button>' : ''}
+            <button class="btn btn-success" onclick="AssetAdmin.saveAsset()">${this.isNew ? '作成' : '保存'}</button>
+          </div>
+        `;
+
+        // 参照先を表示
+        if (!this.isNew && this.currentUsages) {
+          this.renderUsages();
+        }
+      },
+
+      /* ========================================
+         プレビュー描画
+      ======================================== */
+      renderPreview: function(asset) {
+        const url = asset.url || '';
+        const type = asset.assetType || '';
+
+        if (type === 'image' || type === 'icon') {
+          return `
+            <div class="preview-section">
+              <h3>プレビュー</h3>
+              <img class="preview-image" src="${this.escapeHtml(url)}" alt="${this.escapeHtml(asset.altText || '')}" onerror="this.style.display='none'">
+            </div>
+          `;
+        }
+
+        return `
+          <div class="preview-section">
+            <h3>プレビュー</h3>
+            <div class="preview-placeholder">
+              プレビュー非対応（${this.escapeHtml(type)}）
+            </div>
+          </div>
+        `;
+      },
+
+      /* ========================================
+         参照先ビュー描画
+      ======================================== */
+      renderUsages: function() {
+        const container = document.getElementById('usages-container');
+        if (!container) return;
+
+        const usages = this.currentUsages;
+        if (!usages) {
+          container.innerHTML = '';
+          return;
+        }
+
+        const total = usages.total || 0;
+        const countClass = total > 0 ? ' warning' : '';
+
+        let listHtml = '';
+
+        if (total === 0) {
+          listHtml = '<div class="usages-empty">このアセットは未使用です</div>';
+        } else {
+          listHtml = '<ul class="usages-list">';
+
+          // ページヘッダー
+          (usages.pageHeaders || []).forEach(p => {
+            listHtml += `<li><span class="type-label">ページヘッダー:</span> ${this.escapeHtml(p.pageTitle)} (${this.escapeHtml(p.pageId)})</li>`;
+          });
+
+          // ウィジェットアイコン
+          (usages.widgetIcons || []).forEach(w => {
+            listHtml += `<li><span class="type-label">ウィジェットアイコン:</span> ${this.escapeHtml(w.title)} (${this.escapeHtml(w.widgetId)})</li>`;
+          });
+
+          // REF参照
+          (usages.widgetRefs || []).forEach(w => {
+            listHtml += `<li><span class="type-label">ウィジェット参照:</span> ${this.escapeHtml(w.title)} (${this.escapeHtml(w.widgetId)})</li>`;
+          });
+
+          listHtml += '</ul>';
+        }
+
+        container.innerHTML = `
+          <div class="usages-section">
+            <h3>参照先 <span class="count${countClass}">${total}件</span></h3>
+            ${listHtml}
+          </div>
+        `;
+      },
+
+      /* ========================================
+         詳細パネルを閉じる
+      ======================================== */
+      closeDetail: function() {
+        this.selectedAssetId = null;
+        this.isNew = false;
+        this.currentUsages = null;
+        this.renderTable();
+        document.getElementById('detail-panel').innerHTML = `
+          <div class="empty-state">
+            <div class="icon">🖼</div>
+            <p>左のリストからアセットを選択<br>または「新規作成」をクリック</p>
+          </div>
+        `;
+      },
+
+      /* ========================================
+         フォームデータ取得
+      ======================================== */
+      getFormData: function() {
+        return {
+          asset_id: document.getElementById('form-asset-id').value.trim(),
+          asset_type: document.getElementById('form-asset-type').value,
+          url: document.getElementById('form-url').value.trim(),
+          alt_text: document.getElementById('form-alt-text').value.trim(),
+          owner: document.getElementById('form-owner').value.trim(),
+          memo: document.getElementById('form-memo').value.trim()
+        };
+      },
+
+      /* ========================================
+         クライアント側バリデーション
+      ======================================== */
+      validateForm: function(data) {
+        if (!data.asset_id) {
+          return { valid: false, message: 'アセットIDは必須です' };
+        }
+        if (!data.asset_type) {
+          return { valid: false, message: '種別は必須です' };
+        }
+        if (!data.url) {
+          return { valid: false, message: 'URLは必須です' };
+        }
+
+        // URL形式チェック
+        if (!data.url.startsWith('http://') && !data.url.startsWith('https://') && !data.url.startsWith('data:')) {
+          return { valid: false, message: 'URLはhttp(s)://またはdata:で始まる必要があります' };
+        }
+
+        // ID重複チェック（新規作成時のみ）
+        if (this.isNew) {
+          const existing = this.assets.find(a => a.assetId === data.asset_id);
+          if (existing) {
+            return { valid: false, message: 'アセットID "' + data.asset_id + '" は既に存在します' };
+          }
+        }
+
+        return { valid: true, message: '' };
+      },
+
+      /* ========================================
+         保存
+      ======================================== */
+      saveAsset: function() {
+        const data = this.getFormData();
+
+        // バリデーション
+        const validation = this.validateForm(data);
+        if (!validation.valid) {
+          this.showToast(validation.message, 'error');
+          return;
+        }
+
+        // 種別変更時の確認（既存アセットの場合）
+        if (!this.isNew) {
+          const currentAsset = this.assets.find(a => a.assetId === this.selectedAssetId);
+          if (currentAsset && currentAsset.assetType !== data.asset_type) {
+            this.showConfirmDialog(
+              '種別の変更',
+              '種別を変更すると表示に影響が出る可能性があります。続行しますか？',
+              () => this.doSaveAsset(data)
+            );
+            return;
+          }
+        }
+
+        this.doSaveAsset(data);
+      },
+
+      /* ========================================
+         実際の保存処理
+      ======================================== */
+      doSaveAsset: function(data) {
+        this.showLoading();
+
+        if (this.isNew) {
+          // 新規作成
+          google.script.run
+            .withSuccessHandler(this.onSaveSuccess.bind(this))
+            .withFailureHandler(this.onSaveError.bind(this))
+            .createAsset(data);
+        } else {
+          // 更新
+          google.script.run
+            .withSuccessHandler(this.onSaveSuccess.bind(this))
+            .withFailureHandler(this.onSaveError.bind(this))
+            .updateAsset(this.selectedAssetId, data);
+        }
+      },
+
+      /* ========================================
+         削除（非表示）
+      ======================================== */
+      hideAsset: function() {
+        // 参照チェック
+        if (this.currentUsages && this.currentUsages.total > 0) {
+          this.showToast('このアセットは ' + this.currentUsages.total + ' 箇所で参照されているため削除できません', 'error');
+          return;
+        }
+
+        this.showConfirmDialog(
+          'アセットの削除',
+          'このアセットを削除（非表示）にしますか？\n※ 物理削除ではありません',
+          () => {
+            this.showLoading();
+            google.script.run
+              .withSuccessHandler(this.onSaveSuccess.bind(this))
+              .withFailureHandler(this.onSaveError.bind(this))
+              .hideAsset(this.selectedAssetId);
+          }
+        );
+      },
+
+      /* ========================================
+         保存成功
+      ======================================== */
+      onSaveSuccess: function(result) {
+        this.hideLoading();
+
+        if (result.ok) {
+          // 警告があれば表示
+          if (result.warnings && result.warnings.length > 0) {
+            result.warnings.forEach(w => this.showToast(w, 'warning'));
+          }
+          this.showToast('保存しました', 'success');
+          this.reloadData();
+        } else {
+          this.showToast(result.error || '保存に失敗しました', 'error');
+        }
+      },
+
+      /* ========================================
+         保存エラー
+      ======================================== */
+      onSaveError: function(error) {
+        this.hideLoading();
+        this.showToast('エラー: ' + error.message, 'error');
+      },
+
+      /* ========================================
+         データ再取得
+      ======================================== */
+      reloadData: function() {
+        google.script.run
+          .withSuccessHandler((result) => {
+            if (result.ok) {
+              this.assets = result.assets;
+              this.applyFilters();
+
+              // 選択状態を維持
+              if (this.selectedAssetId) {
+                const stillExists = this.assets.find(a => a.assetId === this.selectedAssetId);
+                if (stillExists) {
+                  this.renderDetailForm();
+                  this.loadUsages(this.selectedAssetId);
+                } else {
+                  this.closeDetail();
+                }
+              } else {
+                this.closeDetail();
+              }
+            }
+          })
+          .withFailureHandler((error) => {
+            console.error('Reload error:', error);
+          })
+          .listAssets();
+      },
+
+      /* ========================================
+         確認ダイアログ
+      ======================================== */
+      showConfirmDialog: function(title, message, onConfirm) {
+        const overlay = document.createElement('div');
+        overlay.className = 'confirm-overlay';
+        overlay.id = 'confirm-overlay';
+        overlay.innerHTML = `
+          <div class="confirm-dialog">
+            <h3>${this.escapeHtml(title)}</h3>
+            <p>${this.escapeHtml(message)}</p>
+            <div class="actions">
+              <button class="btn btn-secondary" onclick="AssetAdmin.hideConfirmDialog()">キャンセル</button>
+              <button class="btn btn-danger" id="confirm-btn">続行</button>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(overlay);
+
+        document.getElementById('confirm-btn').onclick = () => {
+          this.hideConfirmDialog();
+          onConfirm();
+        };
+      },
+
+      hideConfirmDialog: function() {
+        const overlay = document.getElementById('confirm-overlay');
+        if (overlay) overlay.remove();
+      },
+
+      /* ========================================
+         ローディング
+      ======================================== */
+      showLoading: function() {
+        const overlay = document.createElement('div');
+        overlay.className = 'loading-overlay';
+        overlay.id = 'loading-overlay';
+        overlay.innerHTML = '<div class="loading-spinner"></div>';
+        document.body.appendChild(overlay);
+      },
+
+      hideLoading: function() {
+        const overlay = document.getElementById('loading-overlay');
+        if (overlay) overlay.remove();
+      },
+
+      /* ========================================
+         トースト
+      ======================================== */
+      showToast: function(message, type) {
+        const existing = document.querySelector('.toast');
+        if (existing) existing.remove();
+
+        const toast = document.createElement('div');
+        toast.className = 'toast toast-' + (type || 'info');
+        toast.textContent = message;
+        document.body.appendChild(toast);
+
+        setTimeout(() => toast.remove(), 3000);
+      },
+
+      /* ========================================
+         ヘルパー
+      ======================================== */
+      escapeHtml: function(str) {
+        if (!str) return '';
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;');
+      }
+    };
+
+    /* ========================================
+       初期化実行
+    ======================================== */
+    document.addEventListener('DOMContentLoaded', () => AssetAdmin.init());
+  </script>
+</body>
+</html>
