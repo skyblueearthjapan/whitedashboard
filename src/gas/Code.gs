@@ -17,11 +17,16 @@ function doGet(e) {
 
     Logger.log('doGet called: pageId=' + pageId);
 
+    // Editor権限チェック（サーバ側で判定）
+    const isEditor = checkIsEditor();
+    Logger.log('isEditor: ' + isEditor);
+
     // HTMLテンプレートを読み込み
     const template = HtmlService.createTemplateFromFile('index');
 
     // テンプレートに渡すデータ
     template.pageId = pageId;
+    template.isEditor = isEditor;
 
     // 設定データを取得してテンプレートに渡す
     const config = getConfig();
@@ -41,6 +46,90 @@ function doGet(e) {
       '<html><body><h1>エラー</h1><p>' + error.message + '</p></body></html>'
     );
   }
+}
+
+/**
+ * Editor権限チェック
+ * Phase5準拠：サーバ側でユーザー権限を判定
+ *
+ * 判定ロジック（優先順）：
+ * 1. スクリプトプロパティの EDITOR_EMAILS にメールがあれば Editor
+ * 2. スプレッドシートの編集権限があれば Editor
+ * 3. それ以外は Viewer
+ *
+ * @returns {boolean}
+ */
+function checkIsEditor() {
+  try {
+    // 現在のユーザーを取得
+    const user = Session.getActiveUser();
+    const email = user.getEmail();
+
+    // メールが取得できない場合（匿名アクセス等）はViewer
+    if (!email) {
+      Logger.log('checkIsEditor: No email, returning false');
+      return false;
+    }
+
+    // 1. EDITOR_EMAILS プロパティをチェック（カンマ区切り）
+    const editorEmails = PropertiesService.getScriptProperties().getProperty('EDITOR_EMAILS') || '';
+    if (editorEmails) {
+      const emailList = editorEmails.split(',').map(e => e.trim().toLowerCase());
+      if (emailList.includes(email.toLowerCase())) {
+        Logger.log('checkIsEditor: Found in EDITOR_EMAILS');
+        return true;
+      }
+    }
+
+    // 2. スプレッドシートの編集権限をチェック
+    const ss = getSpreadsheet();
+    if (ss) {
+      const editors = ss.getEditors();
+      const editorEmails2 = editors.map(e => e.getEmail().toLowerCase());
+      if (editorEmails2.includes(email.toLowerCase())) {
+        Logger.log('checkIsEditor: Has spreadsheet edit permission');
+        return true;
+      }
+
+      // オーナーもEditor
+      const owner = ss.getOwner();
+      if (owner && owner.getEmail().toLowerCase() === email.toLowerCase()) {
+        Logger.log('checkIsEditor: Is spreadsheet owner');
+        return true;
+      }
+    }
+
+    Logger.log('checkIsEditor: Not an editor, email=' + email);
+    return false;
+
+  } catch (e) {
+    // エラー時はViewer扱い（安全側に倒す）
+    Logger.log('checkIsEditor error: ' + e.message);
+    return false;
+  }
+}
+
+/**
+ * Editor権限を持つメールアドレスを追加
+ * @param {string} email
+ */
+function addEditorEmail(email) {
+  const current = PropertiesService.getScriptProperties().getProperty('EDITOR_EMAILS') || '';
+  const emails = current ? current.split(',').map(e => e.trim()) : [];
+  if (!emails.includes(email.trim())) {
+    emails.push(email.trim());
+    PropertiesService.getScriptProperties().setProperty('EDITOR_EMAILS', emails.join(','));
+    Logger.log('Added editor email: ' + email);
+  }
+}
+
+/**
+ * 現在のEditor権限メールリストを取得
+ * @returns {string[]}
+ */
+function getEditorEmails() {
+  const current = PropertiesService.getScriptProperties().getProperty('EDITOR_EMAILS') || '';
+  return current ? current.split(',').map(e => e.trim()) : [];
 }
 
 /**

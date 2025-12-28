@@ -1,0 +1,692 @@
+<script>
+/**
+ * editor.js
+ * 編集モード管理
+ *
+ * Phase2（編集体験）/ Phase3（衝突防止）/ Phase5（権限）/ Phase10（誤操作防止）
+ */
+
+const Editor = {
+  // 状態
+  state: {
+    isEditMode: false,
+    selectedWidgetId: null,
+    isDragging: false,
+    isResizing: false,
+    dragStart: null,       // { x, y, rect }
+    resizeStart: null,     // { x, y, rect }
+    draftRects: {},        // BP別: { PC: [...], TABLET: [...], MOBILE: [...] }
+    hasUnsavedChanges: false
+  },
+
+  /**
+   * 編集モード初期化
+   */
+  init: function() {
+    // Editorでなければ何もしない
+    if (!App.isEditor) return;
+
+    // イベントリスナー設定
+    this.setupEventListeners();
+
+    console.log('Editor initialized');
+  },
+
+  /**
+   * イベントリスナー設定
+   */
+  setupEventListeners: function() {
+    // キャンバスへのマウスイベント
+    document.addEventListener('mousedown', this.onMouseDown.bind(this));
+    document.addEventListener('mousemove', this.onMouseMove.bind(this));
+    document.addEventListener('mouseup', this.onMouseUp.bind(this));
+
+    // キーボードイベント（Escで選択解除）
+    document.addEventListener('keydown', this.onKeyDown.bind(this));
+
+    // ページ離脱時の確認
+    window.addEventListener('beforeunload', this.onBeforeUnload.bind(this));
+  },
+
+  /**
+   * 編集モードをトグル
+   */
+  toggleEditMode: function() {
+    if (this.state.isEditMode) {
+      this.exitEditMode();
+    } else {
+      this.enterEditMode();
+    }
+  },
+
+  /**
+   * 編集モード開始
+   */
+  enterEditMode: function() {
+    const bp = App.state.currentBp;
+
+    // draftRectsがなければ、computedRectsからコピー
+    if (!this.state.draftRects[bp]) {
+      this.state.draftRects[bp] = this.cloneRects(App.state.layoutResult.rects);
+    }
+
+    this.state.isEditMode = true;
+    this.state.selectedWidgetId = null;
+
+    // UI更新
+    this.updateEditModeUI();
+    this.renderWithDraft();
+
+    console.log('Edit mode entered:', bp);
+  },
+
+  /**
+   * 編集モード終了
+   */
+  exitEditMode: function() {
+    // 未保存変更がある場合は確認
+    if (this.state.hasUnsavedChanges) {
+      if (!confirm('未保存の変更があります。編集モードを終了しますか？')) {
+        return;
+      }
+    }
+
+    this.state.isEditMode = false;
+    this.state.selectedWidgetId = null;
+    this.state.isDragging = false;
+    this.state.isResizing = false;
+
+    // UI更新
+    this.updateEditModeUI();
+    // 元の表示に戻す
+    renderCanvas();
+
+    console.log('Edit mode exited');
+  },
+
+  /**
+   * rectsをディープコピー
+   * @param {Array} rects
+   * @returns {Array}
+   */
+  cloneRects: function(rects) {
+    return rects.map(r => ({ ...r }));
+  },
+
+  /**
+   * 現在BPのdraftRectsを取得
+   * @returns {Array}
+   */
+  getCurrentDraftRects: function() {
+    const bp = App.state.currentBp;
+    return this.state.draftRects[bp] || [];
+  },
+
+  /**
+   * draftRectsを更新
+   * @param {string} widgetId
+   * @param {Object} newRect
+   */
+  updateDraftRect: function(widgetId, newRect) {
+    const bp = App.state.currentBp;
+    if (!this.state.draftRects[bp]) return;
+
+    const index = this.state.draftRects[bp].findIndex(r => r.widgetId === widgetId);
+    if (index !== -1) {
+      // sourceをmanualに変更（編集した = 位置確定）
+      this.state.draftRects[bp][index] = {
+        ...newRect,
+        source: 'manual',
+        wasEdited: true
+      };
+      this.state.hasUnsavedChanges = true;
+      this.updateUnsavedBadge();
+    }
+  },
+
+  /**
+   * ウィジェットを選択
+   * @param {string} widgetId
+   */
+  selectWidget: function(widgetId) {
+    if (!this.state.isEditMode) return;
+
+    this.state.selectedWidgetId = widgetId;
+    this.updateSelectionUI();
+    console.log('Selected widget:', widgetId);
+  },
+
+  /**
+   * 選択解除
+   */
+  deselectWidget: function() {
+    this.state.selectedWidgetId = null;
+    this.updateSelectionUI();
+  },
+
+  /**
+   * マウスダウンイベント
+   */
+  onMouseDown: function(e) {
+    if (!this.state.isEditMode) return;
+
+    const target = e.target;
+
+    // リサイズハンドルのクリック
+    if (target.classList.contains('resize-handle')) {
+      e.preventDefault();
+      this.startResize(e);
+      return;
+    }
+
+    // ウィジェットヘッダーのクリック（ドラッグ開始）
+    const widgetHeader = target.closest('.widget-header');
+    if (widgetHeader) {
+      const widgetCard = widgetHeader.closest('.widget-card');
+      if (widgetCard) {
+        e.preventDefault();
+        const widgetId = widgetCard.dataset.widgetId;
+        this.selectWidget(widgetId);
+        this.startDrag(e, widgetId);
+        return;
+      }
+    }
+
+    // ウィジェットカードのクリック（選択のみ）
+    const widgetCard = target.closest('.widget-card');
+    if (widgetCard) {
+      const widgetId = widgetCard.dataset.widgetId;
+      this.selectWidget(widgetId);
+      return;
+    }
+
+    // その他の場所をクリック → 選択解除
+    if (target.closest('.canvas-grid')) {
+      this.deselectWidget();
+    }
+  },
+
+  /**
+   * マウス移動イベント
+   */
+  onMouseMove: function(e) {
+    if (!this.state.isEditMode) return;
+
+    if (this.state.isDragging) {
+      this.onDrag(e);
+    } else if (this.state.isResizing) {
+      this.onResize(e);
+    }
+  },
+
+  /**
+   * マウスアップイベント
+   */
+  onMouseUp: function(e) {
+    if (this.state.isDragging) {
+      this.endDrag(e);
+    } else if (this.state.isResizing) {
+      this.endResize(e);
+    }
+  },
+
+  /**
+   * キーダウンイベント
+   */
+  onKeyDown: function(e) {
+    if (!this.state.isEditMode) return;
+
+    // Escで選択解除
+    if (e.key === 'Escape') {
+      if (this.state.isDragging || this.state.isResizing) {
+        this.cancelOperation();
+      } else {
+        this.deselectWidget();
+      }
+    }
+  },
+
+  /**
+   * ページ離脱時
+   */
+  onBeforeUnload: function(e) {
+    if (this.state.hasUnsavedChanges) {
+      e.preventDefault();
+      e.returnValue = '未保存の変更があります。';
+      return e.returnValue;
+    }
+  },
+
+  /**
+   * ドラッグ開始
+   */
+  startDrag: function(e, widgetId) {
+    const rect = this.getCurrentDraftRects().find(r => r.widgetId === widgetId);
+    if (!rect) return;
+
+    const canvasGrid = document.getElementById('canvas-grid');
+    const gridInfo = this.getGridInfo(canvasGrid);
+
+    this.state.isDragging = true;
+    this.state.dragStart = {
+      mouseX: e.clientX,
+      mouseY: e.clientY,
+      rect: { ...rect },
+      gridInfo: gridInfo
+    };
+
+    document.body.classList.add('dragging');
+    console.log('Drag started:', widgetId);
+  },
+
+  /**
+   * ドラッグ中
+   */
+  onDrag: function(e) {
+    if (!this.state.dragStart) return;
+
+    const { mouseX, mouseY, rect, gridInfo } = this.state.dragStart;
+
+    // マウス移動量をグリッド単位に変換
+    const deltaX = Math.round((e.clientX - mouseX) / gridInfo.cellWidth);
+    const deltaY = Math.round((e.clientY - mouseY) / gridInfo.cellHeight);
+
+    // 新しい位置を計算
+    const newRect = GridMath.calcDragPosition(rect, deltaX, deltaY, gridInfo.cols);
+
+    // 衝突チェック
+    const validation = Collision.validatePlacement(
+      newRect,
+      this.getCurrentDraftRects(),
+      gridInfo.cols,
+      rect.widgetId
+    );
+
+    // プレビュー更新
+    this.updateDragPreview(rect.widgetId, newRect, !validation.valid);
+  },
+
+  /**
+   * ドラッグ終了
+   */
+  endDrag: function(e) {
+    if (!this.state.dragStart) return;
+
+    const { mouseX, mouseY, rect, gridInfo } = this.state.dragStart;
+
+    // 最終位置を計算
+    const deltaX = Math.round((e.clientX - mouseX) / gridInfo.cellWidth);
+    const deltaY = Math.round((e.clientY - mouseY) / gridInfo.cellHeight);
+    const newRect = GridMath.calcDragPosition(rect, deltaX, deltaY, gridInfo.cols);
+
+    // 衝突チェック
+    const validation = Collision.validatePlacement(
+      newRect,
+      this.getCurrentDraftRects(),
+      gridInfo.cols,
+      rect.widgetId
+    );
+
+    if (validation.valid) {
+      // 配置確定
+      this.updateDraftRect(rect.widgetId, newRect);
+      this.renderWithDraft();
+      console.log('Drag completed:', rect.widgetId, newRect);
+    } else {
+      // 元に戻す
+      this.renderWithDraft();
+      this.showToast('配置できません: ' + validation.reason, 'error');
+      console.log('Drag failed:', validation.reason);
+    }
+
+    this.state.isDragging = false;
+    this.state.dragStart = null;
+    document.body.classList.remove('dragging');
+  },
+
+  /**
+   * リサイズ開始
+   */
+  startResize: function(e) {
+    const widgetId = this.state.selectedWidgetId;
+    if (!widgetId) return;
+
+    const rect = this.getCurrentDraftRects().find(r => r.widgetId === widgetId);
+    if (!rect) return;
+
+    const canvasGrid = document.getElementById('canvas-grid');
+    const gridInfo = this.getGridInfo(canvasGrid);
+
+    this.state.isResizing = true;
+    this.state.resizeStart = {
+      mouseX: e.clientX,
+      mouseY: e.clientY,
+      rect: { ...rect },
+      gridInfo: gridInfo
+    };
+
+    document.body.classList.add('resizing');
+    console.log('Resize started:', widgetId);
+  },
+
+  /**
+   * リサイズ中
+   */
+  onResize: function(e) {
+    if (!this.state.resizeStart) return;
+
+    const { mouseX, mouseY, rect, gridInfo } = this.state.resizeStart;
+
+    // マウス移動量をグリッド単位に変換
+    const deltaW = Math.round((e.clientX - mouseX) / gridInfo.cellWidth);
+    const deltaH = Math.round((e.clientY - mouseY) / gridInfo.cellHeight);
+
+    // 新しいサイズを計算
+    const newRect = GridMath.calcResizeSize(rect, deltaW, deltaH, gridInfo.cols);
+
+    // 衝突チェック
+    const validation = Collision.validatePlacement(
+      newRect,
+      this.getCurrentDraftRects(),
+      gridInfo.cols,
+      rect.widgetId
+    );
+
+    // プレビュー更新
+    this.updateResizePreview(rect.widgetId, newRect, !validation.valid);
+  },
+
+  /**
+   * リサイズ終了
+   */
+  endResize: function(e) {
+    if (!this.state.resizeStart) return;
+
+    const { mouseX, mouseY, rect, gridInfo } = this.state.resizeStart;
+
+    // 最終サイズを計算
+    const deltaW = Math.round((e.clientX - mouseX) / gridInfo.cellWidth);
+    const deltaH = Math.round((e.clientY - mouseY) / gridInfo.cellHeight);
+    const newRect = GridMath.calcResizeSize(rect, deltaW, deltaH, gridInfo.cols);
+
+    // 衝突チェック
+    const validation = Collision.validatePlacement(
+      newRect,
+      this.getCurrentDraftRects(),
+      gridInfo.cols,
+      rect.widgetId
+    );
+
+    if (validation.valid) {
+      // サイズ確定
+      this.updateDraftRect(rect.widgetId, newRect);
+      this.renderWithDraft();
+      console.log('Resize completed:', rect.widgetId, newRect);
+    } else {
+      // 元に戻す
+      this.renderWithDraft();
+      this.showToast('サイズ変更できません: ' + validation.reason, 'error');
+      console.log('Resize failed:', validation.reason);
+    }
+
+    this.state.isResizing = false;
+    this.state.resizeStart = null;
+    document.body.classList.remove('resizing');
+  },
+
+  /**
+   * 操作キャンセル
+   */
+  cancelOperation: function() {
+    if (this.state.isDragging) {
+      this.state.isDragging = false;
+      this.state.dragStart = null;
+      document.body.classList.remove('dragging');
+    }
+    if (this.state.isResizing) {
+      this.state.isResizing = false;
+      this.state.resizeStart = null;
+      document.body.classList.remove('resizing');
+    }
+    this.renderWithDraft();
+  },
+
+  /**
+   * グリッド情報を取得
+   */
+  getGridInfo: function(canvasGrid) {
+    const page = getCurrentPage();
+    const cols = getColsForBp(page, App.state.currentBp);
+    const gap = page.gap || 12;
+    const rowHeight = page.rowHeight || 72;
+
+    return GridMath.getGridInfo(canvasGrid, cols, rowHeight, gap);
+  },
+
+  /**
+   * draftRectsで再描画
+   */
+  renderWithDraft: function() {
+    const canvas = document.getElementById('canvas');
+    const page = getCurrentPage();
+
+    if (!page) return;
+
+    const cols = getColsForBp(page, App.state.currentBp);
+    const gap = page.gap || 12;
+    const rowHeight = page.rowHeight || 72;
+
+    let html = '';
+    html += renderCanvasHeader(page);
+
+    // グリッドエリア
+    html += '<div class="canvas-grid" id="canvas-grid" style="grid-template-columns: repeat(' + cols + ', 1fr); grid-auto-rows: ' + rowHeight + 'px;">';
+
+    const draftRects = this.getCurrentDraftRects();
+
+    if (draftRects.length === 0) {
+      html += '<div class="empty-state" style="grid-column: 1 / -1;">このページにウィジェットはありません</div>';
+    } else {
+      draftRects.forEach(rect => {
+        const widget = App.config.widgets.find(w => w.widgetId === rect.widgetId);
+        if (widget) {
+          html += this.renderEditableWidget(widget, rect);
+        }
+      });
+    }
+
+    html += '</div>';
+    canvas.innerHTML = html;
+
+    // 選択状態を反映
+    this.updateSelectionUI();
+  },
+
+  /**
+   * 編集可能なウィジェットを描画
+   */
+  renderEditableWidget: function(widget, rect) {
+    let widgetHtml = WidgetRenderer.render(widget, App.config);
+
+    const gridStyle = `grid-column: ${rect.x} / span ${rect.w}; grid-row: ${rect.y} / span ${rect.h};`;
+    const editClass = this.state.selectedWidgetId === rect.widgetId ? ' widget-selected' : '';
+    const editedClass = rect.wasEdited ? ' widget-edited' : '';
+
+    // リサイズハンドルを追加
+    const resizeHandle = this.state.selectedWidgetId === rect.widgetId
+      ? '<div class="resize-handle"></div>'
+      : '';
+
+    widgetHtml = widgetHtml.replace(
+      /class="widget-card/,
+      `style="${gridStyle}" data-layout-source="${rect.source}" class="widget-card widget-editable${editClass}${editedClass}`
+    );
+
+    // リサイズハンドルを挿入
+    if (resizeHandle) {
+      widgetHtml = widgetHtml.replace('</div>$', resizeHandle + '</div>');
+      // 最後の</div>の前に挿入
+      const lastDivIndex = widgetHtml.lastIndexOf('</div>');
+      widgetHtml = widgetHtml.slice(0, lastDivIndex) + resizeHandle + widgetHtml.slice(lastDivIndex);
+    }
+
+    return widgetHtml;
+  },
+
+  /**
+   * ドラッグプレビュー更新
+   */
+  updateDragPreview: function(widgetId, newRect, isInvalid) {
+    const widgetEl = document.querySelector(`[data-widget-id="${widgetId}"]`);
+    if (!widgetEl) return;
+
+    widgetEl.style.gridColumn = `${newRect.x} / span ${newRect.w}`;
+    widgetEl.style.gridRow = `${newRect.y} / span ${newRect.h}`;
+
+    if (isInvalid) {
+      widgetEl.classList.add('widget-invalid');
+    } else {
+      widgetEl.classList.remove('widget-invalid');
+    }
+  },
+
+  /**
+   * リサイズプレビュー更新
+   */
+  updateResizePreview: function(widgetId, newRect, isInvalid) {
+    this.updateDragPreview(widgetId, newRect, isInvalid);
+  },
+
+  /**
+   * 編集モードUI更新
+   */
+  updateEditModeUI: function() {
+    const toggleBtn = document.getElementById('edit-mode-toggle');
+    if (toggleBtn) {
+      toggleBtn.classList.toggle('active', this.state.isEditMode);
+      toggleBtn.textContent = this.state.isEditMode ? '編集モード ON' : '編集モード';
+    }
+
+    const canvas = document.getElementById('canvas');
+    if (canvas) {
+      canvas.classList.toggle('edit-mode', this.state.isEditMode);
+    }
+
+    this.updateUnsavedBadge();
+  },
+
+  /**
+   * 選択UI更新
+   */
+  updateSelectionUI: function() {
+    // 既存の選択をクリア
+    document.querySelectorAll('.widget-selected').forEach(el => {
+      el.classList.remove('widget-selected');
+    });
+
+    // リサイズハンドルを削除
+    document.querySelectorAll('.resize-handle').forEach(el => {
+      el.remove();
+    });
+
+    // 選択中ウィジェットにクラス追加
+    if (this.state.selectedWidgetId) {
+      const widgetEl = document.querySelector(`[data-widget-id="${this.state.selectedWidgetId}"]`);
+      if (widgetEl) {
+        widgetEl.classList.add('widget-selected');
+        // リサイズハンドルを追加
+        const handle = document.createElement('div');
+        handle.className = 'resize-handle';
+        widgetEl.appendChild(handle);
+      }
+    }
+  },
+
+  /**
+   * 未保存バッジ更新
+   */
+  updateUnsavedBadge: function() {
+    const badge = document.getElementById('unsaved-badge');
+    if (badge) {
+      badge.style.display = this.state.hasUnsavedChanges ? 'inline-block' : 'none';
+    }
+  },
+
+  /**
+   * トースト表示
+   */
+  showToast: function(message, type) {
+    // 簡易トースト
+    const existing = document.querySelector('.editor-toast');
+    if (existing) existing.remove();
+
+    const toast = document.createElement('div');
+    toast.className = 'editor-toast editor-toast-' + (type || 'info');
+    toast.textContent = message;
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+      toast.remove();
+    }, 3000);
+  },
+
+  /**
+   * BP切替時の処理
+   */
+  onBpChange: function(newBp) {
+    if (!this.state.isEditMode) return;
+
+    // 新しいBPのdraftがなければ作成
+    if (!this.state.draftRects[newBp]) {
+      // 元のLayoutEngine結果から再計算
+      const layoutResult = LayoutEngine.computeLayout(
+        App.state.currentPageId,
+        newBp,
+        App.config
+      );
+      this.state.draftRects[newBp] = this.cloneRects(layoutResult.rects);
+    }
+
+    // 選択解除
+    this.deselectWidget();
+
+    // 再描画
+    this.renderWithDraft();
+  },
+
+  /**
+   * 変更をリセット
+   */
+  resetChanges: function() {
+    if (!confirm('編集内容を破棄しますか？')) return;
+
+    const bp = App.state.currentBp;
+    // 元のLayoutEngine結果から再作成
+    const layoutResult = LayoutEngine.computeLayout(
+      App.state.currentPageId,
+      bp,
+      App.config
+    );
+    this.state.draftRects[bp] = this.cloneRects(layoutResult.rects);
+    this.state.hasUnsavedChanges = false;
+
+    this.deselectWidget();
+    this.renderWithDraft();
+    this.updateUnsavedBadge();
+
+    this.showToast('編集内容をリセットしました', 'info');
+  },
+
+  /**
+   * 保存用のデータを取得（指示Fで使用）
+   */
+  getSaveData: function() {
+    const bp = App.state.currentBp;
+    return {
+      pageId: App.state.currentPageId,
+      bp: bp,
+      rects: this.state.draftRects[bp] || []
+    };
+  }
+};
+</script>

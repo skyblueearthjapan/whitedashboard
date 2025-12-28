@@ -549,6 +549,187 @@
     }
 
     /* ========================================
+       編集モード
+    ======================================== */
+    /* 編集モードボタン */
+    .edit-mode-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .edit-mode-toggle {
+      padding: 6px 14px;
+      border: 1px solid #666;
+      background: #fff;
+      color: #666;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: all 0.2s;
+    }
+
+    .edit-mode-toggle:hover {
+      background: #f5f5f5;
+    }
+
+    .edit-mode-toggle.active {
+      background: #ff9800;
+      color: white;
+      border-color: #ff9800;
+    }
+
+    .edit-mode-reset {
+      padding: 6px 10px;
+      border: 1px solid #c5221f;
+      background: #fff;
+      color: #c5221f;
+      font-size: 11px;
+      cursor: pointer;
+      border-radius: 4px;
+      display: none;
+    }
+
+    .edit-mode .edit-mode-reset {
+      display: inline-block;
+    }
+
+    .edit-mode-reset:hover {
+      background: #fce8e6;
+    }
+
+    .unsaved-badge {
+      display: none;
+      padding: 2px 8px;
+      background: #ff9800;
+      color: white;
+      font-size: 10px;
+      font-weight: 500;
+      border-radius: 10px;
+    }
+
+    /* 編集モード中のキャンバス */
+    .canvas.edit-mode {
+      box-shadow: 0 0 0 3px #ff9800, 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .canvas.edit-mode .canvas-grid {
+      cursor: crosshair;
+    }
+
+    /* 編集可能ウィジェット */
+    .widget-editable {
+      position: relative;
+      cursor: move;
+    }
+
+    .widget-editable .widget-header {
+      cursor: grab;
+    }
+
+    .widget-editable .widget-header:active {
+      cursor: grabbing;
+    }
+
+    /* 選択状態 */
+    .widget-selected {
+      outline: 2px solid #1a73e8;
+      outline-offset: 2px;
+      z-index: 10;
+    }
+
+    /* 編集済みマーク */
+    .widget-edited::before {
+      content: '●';
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      color: #ff9800;
+      font-size: 10px;
+      z-index: 20;
+    }
+
+    /* 無効配置 */
+    .widget-invalid {
+      outline: 2px solid #c5221f !important;
+      outline-offset: 2px;
+      background: rgba(197, 34, 31, 0.1);
+    }
+
+    /* リサイズハンドル */
+    .resize-handle {
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      width: 16px;
+      height: 16px;
+      background: #1a73e8;
+      cursor: se-resize;
+      border-radius: 2px 0 6px 0;
+      z-index: 30;
+    }
+
+    .resize-handle::before {
+      content: '';
+      position: absolute;
+      bottom: 3px;
+      right: 3px;
+      width: 8px;
+      height: 8px;
+      border-right: 2px solid white;
+      border-bottom: 2px solid white;
+    }
+
+    /* ドラッグ中・リサイズ中 */
+    body.dragging, body.resizing {
+      user-select: none;
+    }
+
+    body.dragging * {
+      cursor: grabbing !important;
+    }
+
+    body.resizing * {
+      cursor: se-resize !important;
+    }
+
+    /* トースト */
+    .editor-toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 12px 24px;
+      background: #333;
+      color: white;
+      border-radius: 6px;
+      font-size: 13px;
+      z-index: 1000;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      animation: toast-in 0.3s ease;
+    }
+
+    .editor-toast-error {
+      background: #c5221f;
+    }
+
+    .editor-toast-success {
+      background: #34a853;
+    }
+
+    @keyframes toast-in {
+      from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+      }
+    }
+
+    /* ========================================
        デバッグパネル
     ======================================== */
     .debug-panel {
@@ -615,7 +796,14 @@
   <!-- ツールバー -->
   <div class="toolbar">
     <nav class="page-tabs" id="page-tabs"></nav>
-    <div class="bp-switcher" id="bp-switcher"></div>
+    <div style="display: flex; align-items: center; gap: 16px;">
+      <div class="edit-mode-controls" id="edit-mode-controls" style="display: none;">
+        <button class="edit-mode-toggle" id="edit-mode-toggle" onclick="Editor.toggleEditMode()">編集モード</button>
+        <button class="edit-mode-reset" id="edit-mode-reset" onclick="Editor.resetChanges()">リセット</button>
+        <span class="unsaved-badge" id="unsaved-badge">未保存</span>
+      </div>
+      <div class="bp-switcher" id="bp-switcher"></div>
+    </div>
   </div>
 
   <!-- キャンバスコンテナ -->
@@ -634,6 +822,8 @@
   <!-- ライブラリ・ウィジェットモジュール読み込み -->
   <?!= include('lib/ref-resolver'); ?>
   <?!= include('lib/layout-engine'); ?>
+  <?!= include('lib/grid-math'); ?>
+  <?!= include('lib/collision'); ?>
   <?!= include('widgets/renderer'); ?>
   <?!= include('widgets/link'); ?>
   <?!= include('widgets/embed'); ?>
@@ -641,6 +831,7 @@
   <?!= include('widgets/pdf'); ?>
   <?!= include('widgets/sheet'); ?>
   <?!= include('widgets/html-widget'); ?>
+  <?!= include('editor/editor'); ?>
 
   <script>
     /* ========================================
@@ -648,6 +839,7 @@
     ======================================== */
     const App = {
       config: <?!= configJson ?>,
+      isEditor: <?= isEditor ?>,  // 編集権限（サーバー側で判定）
       state: {
         currentPageId: '<?= pageId ?>',
         currentBp: 'PC',
@@ -661,6 +853,7 @@
     ======================================== */
     function init() {
       console.log('App initialized:', App);
+      console.log('isEditor:', App.isEditor);
 
       if (App.config.error) {
         showError(App.config.error);
@@ -672,6 +865,12 @@
       renderCanvas();
       updateHeaderMeta();
       renderDebugPanel();
+
+      // Editor初期化
+      if (App.isEditor) {
+        document.getElementById('edit-mode-controls').style.display = 'flex';
+        Editor.init();
+      }
     }
 
     /* ========================================
@@ -719,8 +918,21 @@
       if (App.state.currentBp === bp) return;
       App.state.currentBp = bp;
       console.log('BP switched to:', bp);
+
+      // Editor側のBP切替処理
+      if (App.isEditor && Editor.state.isEditMode) {
+        Editor.onBpChange(bp);
+      }
+
       renderBpSwitcher();
-      renderCanvas();
+
+      // 編集モード中はrenderWithDraftで描画
+      if (App.isEditor && Editor.state.isEditMode) {
+        Editor.renderWithDraft();
+      } else {
+        renderCanvas();
+      }
+
       renderDebugPanel();
     }
 

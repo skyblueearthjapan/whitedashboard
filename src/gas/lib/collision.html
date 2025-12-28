@@ -1,0 +1,134 @@
+<script>
+/**
+ * collision.js
+ * AABB衝突判定ユーティリティ
+ *
+ * LayoutEngineとEditorで共通使用
+ */
+
+const Collision = {
+  /**
+   * 2つの矩形が衝突するか判定（AABB）
+   * @param {Object} a - { x, y, w, h }
+   * @param {Object} b - { x, y, w, h }
+   * @returns {boolean}
+   */
+  collides: function(a, b) {
+    const aLeft = a.x;
+    const aRight = a.x + a.w - 1;
+    const aTop = a.y;
+    const aBottom = a.y + a.h - 1;
+
+    const bLeft = b.x;
+    const bRight = b.x + b.w - 1;
+    const bTop = b.y;
+    const bBottom = b.y + b.h - 1;
+
+    // 衝突しない条件
+    if (aRight < bLeft) return false;
+    if (aLeft > bRight) return false;
+    if (aBottom < bTop) return false;
+    if (aTop > bBottom) return false;
+
+    return true;
+  },
+
+  /**
+   * 指定矩形が他の矩形群と衝突するかチェック
+   * @param {Object} rect - チェック対象
+   * @param {Array} rects - 他の矩形群
+   * @param {string} [excludeWidgetId] - 除外するwidgetId
+   * @returns {boolean}
+   */
+  collidesWithAny: function(rect, rects, excludeWidgetId) {
+    for (const r of rects) {
+      // 除外対象はスキップ
+      if (excludeWidgetId && r.widgetId === excludeWidgetId) {
+        continue;
+      }
+      if (this.collides(rect, r)) {
+        return true;
+      }
+    }
+    return false;
+  },
+
+  /**
+   * 衝突する矩形を返す
+   * @param {Object} rect
+   * @param {Array} rects
+   * @param {string} [excludeWidgetId]
+   * @returns {Object|null}
+   */
+  findCollision: function(rect, rects, excludeWidgetId) {
+    for (const r of rects) {
+      if (excludeWidgetId && r.widgetId === excludeWidgetId) {
+        continue;
+      }
+      if (this.collides(rect, r)) {
+        return r;
+      }
+    }
+    return null;
+  },
+
+  /**
+   * 衝突する全矩形を返す
+   * @param {Object} rect
+   * @param {Array} rects
+   * @param {string} [excludeWidgetId]
+   * @returns {Array}
+   */
+  findAllCollisions: function(rect, rects, excludeWidgetId) {
+    const collisions = [];
+    for (const r of rects) {
+      if (excludeWidgetId && r.widgetId === excludeWidgetId) {
+        continue;
+      }
+      if (this.collides(rect, r)) {
+        collisions.push(r);
+      }
+    }
+    return collisions;
+  },
+
+  /**
+   * 配置が有効かチェック（衝突なし + 範囲内）
+   * @param {Object} rect - { x, y, w, h }
+   * @param {Array} rects - 他の矩形群
+   * @param {number} cols - 列数
+   * @param {string} [excludeWidgetId]
+   * @returns {Object} { valid: boolean, reason: string|null }
+   */
+  validatePlacement: function(rect, rects, cols, excludeWidgetId) {
+    // 範囲チェック
+    if (rect.x < 1) {
+      return { valid: false, reason: 'X座標が範囲外です' };
+    }
+    if (rect.y < 1) {
+      return { valid: false, reason: 'Y座標が範囲外です' };
+    }
+    if (rect.w < 1) {
+      return { valid: false, reason: '幅が不正です' };
+    }
+    if (rect.h < 1) {
+      return { valid: false, reason: '高さが不正です' };
+    }
+    if (rect.x + rect.w - 1 > cols) {
+      return { valid: false, reason: '列数を超えています' };
+    }
+
+    // 衝突チェック
+    const collision = this.findCollision(rect, rects, excludeWidgetId);
+    if (collision) {
+      return {
+        valid: false,
+        reason: '他のウィジェットと衝突しています',
+        collidesWithWidgetId: collision.widgetId
+      };
+    }
+
+    return { valid: true, reason: null };
+  }
+};
+</script>

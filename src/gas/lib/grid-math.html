@@ -1,0 +1,187 @@
+<script>
+/**
+ * grid-math.js
+ * グリッド座標計算ユーティリティ
+ *
+ * ピクセル座標 ↔ グリッド座標の変換
+ * clamp処理（範囲制限）
+ */
+
+const GridMath = {
+  /**
+   * キャンバスグリッド情報を取得
+   * @param {HTMLElement} canvasGrid - .canvas-grid要素
+   * @param {number} cols - 列数
+   * @param {number} rowHeight - 行高さ(px)
+   * @param {number} gap - 余白(px)
+   * @returns {Object} { cellWidth, cellHeight, gap, cols, offsetLeft, offsetTop }
+   */
+  getGridInfo: function(canvasGrid, cols, rowHeight, gap) {
+    const rect = canvasGrid.getBoundingClientRect();
+
+    // セル幅 = (コンテナ幅 - gap*(cols-1)) / cols
+    // ただしCSS Gridの場合、実際のセル幅はブラウザが計算
+    // より正確には、1frの実際の幅を計算
+    const totalGapWidth = gap * (cols - 1);
+    const availableWidth = rect.width - gap * 2; // padding分を引く
+    const cellWidth = (availableWidth - totalGapWidth) / cols + gap; // gapを含めた論理幅
+
+    return {
+      cols: cols,
+      cellWidth: cellWidth,
+      cellHeight: rowHeight + gap, // gapを含めた論理高さ
+      rowHeight: rowHeight,
+      gap: gap,
+      offsetLeft: rect.left + gap, // padding分
+      offsetTop: rect.top + gap,
+      containerWidth: rect.width,
+      containerHeight: rect.height
+    };
+  },
+
+  /**
+   * ピクセル座標からグリッド座標に変換
+   * @param {number} px - ピクセルX座標（キャンバス相対）
+   * @param {number} py - ピクセルY座標（キャンバス相対）
+   * @param {Object} gridInfo - getGridInfo()の結果
+   * @returns {Object} { x, y } - グリッド座標（1始まり）
+   */
+  pxToGrid: function(px, py, gridInfo) {
+    // グリッド座標を計算（0始まり）
+    let gx = Math.floor(px / gridInfo.cellWidth);
+    let gy = Math.floor(py / gridInfo.cellHeight);
+
+    // 1始まりに変換
+    gx = gx + 1;
+    gy = gy + 1;
+
+    // clamp
+    gx = this.clamp(gx, 1, gridInfo.cols);
+    gy = Math.max(1, gy);
+
+    return { x: gx, y: gy };
+  },
+
+  /**
+   * グリッド座標からピクセル座標に変換（左上）
+   * @param {number} gx - グリッドX座標（1始まり）
+   * @param {number} gy - グリッドY座標（1始まり）
+   * @param {Object} gridInfo
+   * @returns {Object} { px, py }
+   */
+  gridToPx: function(gx, gy, gridInfo) {
+    // 0始まりに変換して計算
+    const px = (gx - 1) * gridInfo.cellWidth;
+    const py = (gy - 1) * gridInfo.cellHeight;
+    return { px, py };
+  },
+
+  /**
+   * ウィジェットのピクセルサイズを計算
+   * @param {number} w - 幅（グリッド単位）
+   * @param {number} h - 高さ（グリッド単位）
+   * @param {Object} gridInfo
+   * @returns {Object} { width, height }
+   */
+  getWidgetSize: function(w, h, gridInfo) {
+    // CSS Gridの span 計算に合わせる
+    // 幅 = w * cellWidth - gap
+    // 高さ = h * cellHeight - gap
+    const width = w * gridInfo.cellWidth - gridInfo.gap;
+    const height = h * gridInfo.cellHeight - gridInfo.gap;
+    return { width, height };
+  },
+
+  /**
+   * 値を範囲内にclamp
+   * @param {number} value
+   * @param {number} min
+   * @param {number} max
+   * @returns {number}
+   */
+  clamp: function(value, min, max) {
+    return Math.max(min, Math.min(max, value));
+  },
+
+  /**
+   * rectのx座標をclamp（列数超え対策）
+   * @param {Object} rect - { x, y, w, h }
+   * @param {number} cols
+   * @returns {Object}
+   */
+  clampRect: function(rect, cols) {
+    let { x, y, w, h } = rect;
+
+    // w を cols 以内に
+    w = Math.min(w, cols);
+
+    // x を 1 以上に
+    x = Math.max(1, x);
+
+    // y を 1 以上に
+    y = Math.max(1, y);
+
+    // x + w - 1 > cols の場合
+    if (x + w - 1 > cols) {
+      x = cols - w + 1;
+    }
+
+    return { ...rect, x, y, w, h };
+  },
+
+  /**
+   * ドラッグ中の新しい位置を計算
+   * @param {Object} startRect - 開始時のrect
+   * @param {number} deltaX - X方向のグリッド移動量
+   * @param {number} deltaY - Y方向のグリッド移動量
+   * @param {number} cols
+   * @returns {Object}
+   */
+  calcDragPosition: function(startRect, deltaX, deltaY, cols) {
+    let newX = startRect.x + deltaX;
+    let newY = startRect.y + deltaY;
+
+    // clamp
+    newX = Math.max(1, newX);
+    newY = Math.max(1, newY);
+
+    // 右端超え防止
+    if (newX + startRect.w - 1 > cols) {
+      newX = cols - startRect.w + 1;
+    }
+
+    return {
+      ...startRect,
+      x: newX,
+      y: newY
+    };
+  },
+
+  /**
+   * リサイズ中の新しいサイズを計算
+   * @param {Object} startRect - 開始時のrect
+   * @param {number} deltaW - 幅の変化量
+   * @param {number} deltaH - 高さの変化量
+   * @param {number} cols
+   * @returns {Object}
+   */
+  calcResizeSize: function(startRect, deltaW, deltaH, cols) {
+    let newW = startRect.w + deltaW;
+    let newH = startRect.h + deltaH;
+
+    // 最小サイズ
+    newW = Math.max(1, newW);
+    newH = Math.max(1, newH);
+
+    // 最大サイズ（列数超え防止）
+    const maxW = cols - startRect.x + 1;
+    newW = Math.min(newW, maxW);
+
+    return {
+      ...startRect,
+      w: newW,
+      h: newH
+    };
+  }
+};
+</script>
