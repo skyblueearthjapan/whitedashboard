@@ -11,9 +11,9 @@
 | Phase 2 | UI/UX仕様（閲覧・編集体験） | 完了 | [phase2-ui-ux-specification.md](./phase2-ui-ux-specification.md) |
 | Phase 3 | レイアウト計算（auto整列アルゴリズム） | 完了 | [phase3-layout-calculation.md](./phase3-layout-calculation.md) |
 | Phase 4 | 埋め込み詳細（AppSheet/GAS/自作Web） | 完了 | [phase4-embed-specification.md](./phase4-embed-specification.md) |
-| Phase 5 | 権限・監査・運用仕様 | 未着手 | - |
-| Phase 6 | TBD | 未着手 | - |
-| Phase 7 | TBD | 未着手 | - |
+| Phase 5 | 権限・監査・運用仕様 | 完了 | [phase5-permission-audit-operation.md](./phase5-permission-audit-operation.md) |
+| Phase 6 | 実装方針（技術スタック・システム構成） | 未着手 | - |
+| Phase 7 | MVP定義と拡張ロードマップ | 未着手 | - |
 | Phase 8 | TBD | 未着手 | - |
 | Phase 9 | TBD | 未着手 | - |
 | Phase 10 | TBD | 未着手 | - |
