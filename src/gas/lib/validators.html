@@ -1,0 +1,386 @@
+<script>
+/**
+ * validators.js
+ * 設定検証ロジック
+ *
+ * Phase9（P0改善）/ Phase10（運用UI）
+ */
+
+const Validators = {
+  /**
+   * 設定を検証して警告・注意・棚卸情報を返す
+   * @param {Object} config - getConfig()の結果
+   * @returns {Object} { errors: [], warnings: [], reviews: [] }
+   */
+  validateConfig: function(config) {
+    const result = {
+      errors: [],    // P0：重大な問題
+      warnings: [],  // P1：注意
+      reviews: []    // 棚卸情報
+    };
+
+    try {
+      // ID重複チェック
+      this.checkDuplicateIds(config, result);
+
+      // 参照切れチェック
+      this.checkBrokenReferences(config, result);
+
+      // URL未設定チェック
+      this.checkMissingUrls(config, result);
+
+      // レイアウト不整合チェック
+      this.checkLayoutIntegrity(config, result);
+
+      // Manual衝突チェック
+      this.checkManualCollisions(config, result);
+
+      // 棚卸チェック
+      this.checkReviewCycles(config, result);
+
+    } catch (e) {
+      console.error('Validators error:', e);
+      result.errors.push({
+        type: 'validator_error',
+        message: '検証中にエラーが発生しました: ' + e.message
+      });
+    }
+
+    return result;
+  },
+
+  /**
+   * ID重複チェック
+   */
+  checkDuplicateIds: function(config, result) {
+    // ページID重複
+    const pageIds = {};
+    config.pages.forEach((p, i) => {
+      if (pageIds[p.pageId]) {
+        result.errors.push({
+          type: 'duplicate_page_id',
+          id: p.pageId,
+          message: 'ページID "' + p.pageId + '" が重複しています',
+          locations: [pageIds[p.pageId], i + 1]
+        });
+      } else {
+        pageIds[p.pageId] = i + 1;
+      }
+    });
+
+    // ウィジェットID重複
+    const widgetIds = {};
+    config.widgets.forEach((w, i) => {
+      if (widgetIds[w.widgetId]) {
+        result.errors.push({
+          type: 'duplicate_widget_id',
+          id: w.widgetId,
+          message: 'ウィジェットID "' + w.widgetId + '" が重複しています',
+          locations: [widgetIds[w.widgetId], i + 1]
+        });
+      } else {
+        widgetIds[w.widgetId] = i + 1;
+      }
+    });
+
+    // アセットID重複
+    const assetIds = {};
+    Object.keys(config.assets).forEach((id, i) => {
+      if (assetIds[id]) {
+        result.errors.push({
+          type: 'duplicate_asset_id',
+          id: id,
+          message: 'アセットID "' + id + '" が重複しています'
+        });
+      } else {
+        assetIds[id] = i + 1;
+      }
+    });
+
+    // HTML本文ID重複
+    const contentIds = {};
+    Object.keys(config.htmlContent).forEach((id, i) => {
+      if (contentIds[id]) {
+        result.errors.push({
+          type: 'duplicate_content_id',
+          id: id,
+          message: 'HTML本文ID "' + id + '" が重複しています'
+        });
+      } else {
+        contentIds[id] = i + 1;
+      }
+    });
+  },
+
+  /**
+   * 参照切れチェック
+   */
+  checkBrokenReferences: function(config, result) {
+    config.widgets.forEach(w => {
+      // HTML参照切れ
+      if (w.urlOrRef && w.urlOrRef.startsWith('REF:HTML_')) {
+        const refId = w.urlOrRef.replace('REF:', '');
+        if (!config.htmlContent[refId]) {
+          result.errors.push({
+            type: 'broken_html_ref',
+            widgetId: w.widgetId,
+            refId: refId,
+            message: 'ウィジェット "' + w.widgetId + '" のHTML参照 "' + refId + '" が存在しません'
+          });
+        }
+      }
+
+      // アセット参照切れ（url_or_ref）
+      if (w.urlOrRef && w.urlOrRef.startsWith('REF:ASSET_')) {
+        const refId = w.urlOrRef.replace('REF:', '');
+        if (!config.assets[refId]) {
+          result.errors.push({
+            type: 'broken_asset_ref',
+            widgetId: w.widgetId,
+            refId: refId,
+            message: 'ウィジェット "' + w.widgetId + '" のアセット参照 "' + refId + '" が存在しません'
+          });
+        }
+      }
+
+      // アイコンアセット参照切れ
+      if (w.iconAssetId && !config.assets[w.iconAssetId]) {
+        result.errors.push({
+          type: 'broken_icon_ref',
+          widgetId: w.widgetId,
+          assetId: w.iconAssetId,
+          message: 'ウィジェット "' + w.widgetId + '" のアイコン "' + w.iconAssetId + '" が存在しません'
+        });
+      }
+    });
+
+    // ページのヘッダーアセット参照切れ
+    config.pages.forEach(p => {
+      if (p.headerAssetId && !config.assets[p.headerAssetId]) {
+        result.errors.push({
+          type: 'broken_header_ref',
+          pageId: p.pageId,
+          assetId: p.headerAssetId,
+          message: 'ページ "' + p.pageId + '" のヘッダー画像 "' + p.headerAssetId + '" が存在しません'
+        });
+      }
+    });
+  },
+
+  /**
+   * URL未設定チェック
+   */
+  checkMissingUrls: function(config, result) {
+    const typesRequiringUrl = ['link', 'embed', 'image', 'pdf', 'sheet'];
+
+    config.widgets.forEach(w => {
+      if (typesRequiringUrl.includes(w.type)) {
+        if (!w.urlOrRef || w.urlOrRef.trim() === '') {
+          result.errors.push({
+            type: 'missing_url',
+            widgetId: w.widgetId,
+            widgetType: w.type,
+            message: 'ウィジェット "' + w.widgetId + '" (' + w.type + ') のURL/参照が未設定です'
+          });
+        }
+      }
+    });
+  },
+
+  /**
+   * レイアウト不整合チェック
+   */
+  checkLayoutIntegrity: function(config, result) {
+    // widgetIdセットを作成
+    const widgetIdSet = new Set(config.widgets.map(w => w.widgetId));
+
+    // 孤児layout（layoutにあるがwidgetにない）
+    config.layout.forEach(l => {
+      if (!widgetIdSet.has(l.widgetId)) {
+        result.errors.push({
+          type: 'orphan_layout',
+          widgetId: l.widgetId,
+          pageId: l.pageId,
+          bp: l.breakpoint,
+          message: 'レイアウト "' + l.widgetId + '" に対応するウィジェットが存在しません'
+        });
+      }
+    });
+
+    // visible=TRUEだがlayoutがない（注意レベル）
+    config.widgets.forEach(w => {
+      if (w.visible) {
+        const hasLayout = config.layout.some(
+          l => l.widgetId === w.widgetId && l.pageId === w.defaultPage
+        );
+        if (!hasLayout) {
+          result.warnings.push({
+            type: 'no_layout',
+            widgetId: w.widgetId,
+            pageId: w.defaultPage,
+            message: 'ウィジェット "' + w.widgetId + '" にレイアウト設定がありません（自動配置されます）'
+          });
+        }
+      }
+    });
+  },
+
+  /**
+   * Manual衝突チェック
+   */
+  checkManualCollisions: function(config, result) {
+    // page_id + bp 単位でグループ化
+    const groups = {};
+
+    config.layout.forEach(l => {
+      // manual配置のみ対象（auto=FALSE かつ x,yあり）
+      if (l.auto === false && l.x && l.y) {
+        const key = l.pageId + '_' + l.breakpoint;
+        if (!groups[key]) {
+          groups[key] = [];
+        }
+        groups[key].push(l);
+      }
+    });
+
+    // 各グループで衝突チェック
+    Object.keys(groups).forEach(key => {
+      const rects = groups[key];
+      for (let i = 0; i < rects.length; i++) {
+        for (let j = i + 1; j < rects.length; j++) {
+          if (this.collides(rects[i], rects[j])) {
+            result.errors.push({
+              type: 'manual_collision',
+              widget1: rects[i].widgetId,
+              widget2: rects[j].widgetId,
+              pageId: rects[i].pageId,
+              bp: rects[i].breakpoint,
+              message: 'Manual配置が衝突: "' + rects[i].widgetId + '" と "' + rects[j].widgetId + '" (' + key + ')'
+            });
+          }
+        }
+      }
+    });
+  },
+
+  /**
+   * AABB衝突判定
+   */
+  collides: function(a, b) {
+    const aRight = a.x + a.w - 1;
+    const aBottom = a.y + a.h - 1;
+    const bRight = b.x + b.w - 1;
+    const bBottom = b.y + b.h - 1;
+
+    if (aRight < b.x) return false;
+    if (a.x > bRight) return false;
+    if (aBottom < b.y) return false;
+    if (a.y > bBottom) return false;
+
+    return true;
+  },
+
+  /**
+   * 棚卸チェック
+   */
+  checkReviewCycles: function(config, result) {
+    const now = new Date();
+    const cycleTodays = {
+      'weekly': 7,
+      'monthly': 30,
+      'quarterly': 90,
+      'yearly': 365
+    };
+
+    config.widgets.forEach(w => {
+      if (!w.reviewCycle || w.reviewCycle === 'none') {
+        // 棚卸未設定
+        result.reviews.push({
+          status: 'not_set',
+          widgetId: w.widgetId,
+          title: w.title,
+          owner: w.owner || '(未設定)',
+          reviewCycle: 'none',
+          message: '棚卸周期が未設定です'
+        });
+        return;
+      }
+
+      const cycleDays = cycleTodays[w.reviewCycle];
+      if (!cycleDays) {
+        result.reviews.push({
+          status: 'unknown_cycle',
+          widgetId: w.widgetId,
+          title: w.title,
+          owner: w.owner || '(未設定)',
+          reviewCycle: w.reviewCycle,
+          message: '不明な棚卸周期: ' + w.reviewCycle
+        });
+        return;
+      }
+
+      // last_reviewed_at がなければ「未レビュー」扱い
+      // MVPでは監査ログから取得する機能は省略し、単純に「未レビュー」とする
+      const lastReviewedAt = w.lastReviewedAt ? new Date(w.lastReviewedAt) : null;
+
+      if (!lastReviewedAt) {
+        result.reviews.push({
+          status: 'never_reviewed',
+          widgetId: w.widgetId,
+          title: w.title,
+          owner: w.owner || '(未設定)',
+          reviewCycle: w.reviewCycle,
+          message: 'まだレビューされていません'
+        });
+        return;
+      }
+
+      const daysSinceReview = Math.floor((now - lastReviewedAt) / (1000 * 60 * 60 * 24));
+      const daysUntilDue = cycleDays - daysSinceReview;
+
+      if (daysUntilDue < 0) {
+        result.reviews.push({
+          status: 'overdue',
+          widgetId: w.widgetId,
+          title: w.title,
+          owner: w.owner || '(未設定)',
+          reviewCycle: w.reviewCycle,
+          daysOverdue: Math.abs(daysUntilDue),
+          lastReviewedAt: lastReviewedAt.toISOString().split('T')[0],
+          message: cycleDays + '日周期を' + Math.abs(daysUntilDue) + '日超過'
+        });
+      } else if (daysUntilDue <= 7) {
+        result.reviews.push({
+          status: 'due_soon',
+          widgetId: w.widgetId,
+          title: w.title,
+          owner: w.owner || '(未設定)',
+          reviewCycle: w.reviewCycle,
+          daysUntilDue: daysUntilDue,
+          lastReviewedAt: lastReviewedAt.toISOString().split('T')[0],
+          message: 'あと' + daysUntilDue + '日で期限'
+        });
+      }
+    });
+  },
+
+  /**
+   * サマリーを計算
+   * @param {Object} validationResult
+   * @returns {Object}
+   */
+  getSummary: function(validationResult) {
+    const overdueCount = validationResult.reviews.filter(r => r.status === 'overdue').length;
+    const dueSoonCount = validationResult.reviews.filter(r => r.status === 'due_soon').length;
+    const neverReviewedCount = validationResult.reviews.filter(r => r.status === 'never_reviewed').length;
+
+    return {
+      errorCount: validationResult.errors.length,
+      warningCount: validationResult.warnings.length,
+      reviewOverdueCount: overdueCount,
+      reviewDueSoonCount: dueSoonCount,
+      reviewNeverCount: neverReviewedCount
+    };
+  }
+};
+</script>

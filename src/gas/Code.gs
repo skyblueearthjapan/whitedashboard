@@ -12,33 +12,23 @@
  */
 function doGet(e) {
   try {
-    // パラメータからページIDを取得（デフォルト: home）
+    // パラメータ取得
+    const view = (e && e.parameter && e.parameter.view) || 'portal';
     const pageId = (e && e.parameter && e.parameter.page) || 'home';
 
-    Logger.log('doGet called: pageId=' + pageId);
+    Logger.log('doGet called: view=' + view + ', pageId=' + pageId);
 
     // Editor権限チェック（サーバ側で判定）
     const isEditor = checkIsEditor();
     Logger.log('isEditor: ' + isEditor);
 
-    // HTMLテンプレートを読み込み
-    const template = HtmlService.createTemplateFromFile('index');
+    // view=admin の場合は管理画面を表示
+    if (view === 'admin') {
+      return renderAdminView(isEditor);
+    }
 
-    // テンプレートに渡すデータ
-    template.pageId = pageId;
-    template.isEditor = isEditor;
-
-    // 設定データを取得してテンプレートに渡す
-    const config = getConfig();
-    template.configJson = JSON.stringify(config);
-
-    // HTMLを生成
-    const output = template.evaluate()
-      .setTitle('ポータルダッシュボード')
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
-      .addMetaTag('viewport', 'width=device-width, initial-scale=1');
-
-    return output;
+    // 通常のポータル画面
+    return renderPortalView(pageId, isEditor);
 
   } catch (error) {
     Logger.log('doGet error: ' + error.message);
@@ -46,6 +36,66 @@ function doGet(e) {
       '<html><body><h1>エラー</h1><p>' + error.message + '</p></body></html>'
     );
   }
+}
+
+/**
+ * ポータル画面を描画
+ * @param {string} pageId
+ * @param {boolean} isEditor
+ * @returns {HtmlOutput}
+ */
+function renderPortalView(pageId, isEditor) {
+  // HTMLテンプレートを読み込み
+  const template = HtmlService.createTemplateFromFile('index');
+
+  // テンプレートに渡すデータ
+  template.pageId = pageId;
+  template.isEditor = isEditor;
+
+  // 設定データを取得してテンプレートに渡す
+  const config = getConfig();
+  template.configJson = JSON.stringify(config);
+
+  // HTMLを生成
+  const output = template.evaluate()
+    .setTitle('ポータルダッシュボード')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+
+  return output;
+}
+
+/**
+ * 管理画面を描画
+ * @param {boolean} isEditor
+ * @returns {HtmlOutput}
+ */
+function renderAdminView(isEditor) {
+  // Editorでない場合はアクセス拒否
+  if (!isEditor) {
+    return HtmlService.createHtmlOutput(
+      '<html><body style="font-family: sans-serif; padding: 40px; text-align: center;">' +
+      '<h1>アクセス権限がありません</h1>' +
+      '<p>この画面はEditor権限が必要です。</p>' +
+      '<p><a href="?view=portal">ポータルへ戻る</a></p>' +
+      '</body></html>'
+    ).setTitle('アクセス拒否');
+  }
+
+  // HTMLテンプレートを読み込み
+  const template = HtmlService.createTemplateFromFile('admin');
+
+  // 設定データを取得
+  const config = getConfig();
+  template.configJson = JSON.stringify(config);
+
+  // HTMLを生成
+  const output = template.evaluate()
+    .setTitle('管理画面 - ポータルダッシュボード')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+
+  return output;
 }
 
 /**

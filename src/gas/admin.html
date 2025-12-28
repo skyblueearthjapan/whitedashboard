@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>管理画面 - ポータルダッシュボード</title>
+  <style>
+    /* ========================================
+       リセット・ベース
+    ======================================== */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background-color: #f5f5f5;
+      color: #333;
+      line-height: 1.6;
+    }
+
+    a {
+      color: #1a73e8;
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    /* ========================================
+       ヘッダー
+    ======================================== */
+    .header {
+      background-color: #333;
+      color: white;
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .header h1 {
+      font-size: 18px;
+      font-weight: 500;
+    }
+
+    .header-nav {
+      display: flex;
+      gap: 16px;
+    }
+
+    .header-nav a {
+      color: white;
+      opacity: 0.9;
+      font-size: 13px;
+    }
+
+    .header-nav a:hover {
+      opacity: 1;
+      text-decoration: none;
+    }
+
+    /* ========================================
+       メインコンテンツ
+    ======================================== */
+    .main {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    /* ========================================
+       サマリーカード
+    ======================================== */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .summary-card {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .summary-card.error {
+      border-left: 4px solid #c5221f;
+    }
+
+    .summary-card.warning {
+      border-left: 4px solid #ff9800;
+    }
+
+    .summary-card.review {
+      border-left: 4px solid #1a73e8;
+    }
+
+    .summary-card.ok {
+      border-left: 4px solid #34a853;
+    }
+
+    .summary-label {
+      font-size: 13px;
+      color: #666;
+      margin-bottom: 4px;
+    }
+
+    .summary-value {
+      font-size: 32px;
+      font-weight: 600;
+    }
+
+    .summary-value.error {
+      color: #c5221f;
+    }
+
+    .summary-value.warning {
+      color: #ff9800;
+    }
+
+    .summary-value.review {
+      color: #1a73e8;
+    }
+
+    .summary-value.ok {
+      color: #34a853;
+    }
+
+    /* ========================================
+       セクション
+    ======================================== */
+    .section {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      margin-bottom: 24px;
+    }
+
+    .section-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid #e0e0e0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+    }
+
+    .section-header:hover {
+      background: #fafafa;
+    }
+
+    .section-title {
+      font-size: 16px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-count {
+      background: #e0e0e0;
+      color: #666;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .section-count.error {
+      background: #fce8e6;
+      color: #c5221f;
+    }
+
+    .section-count.warning {
+      background: #fef7e0;
+      color: #b06000;
+    }
+
+    .section-toggle {
+      font-size: 12px;
+      color: #999;
+    }
+
+    .section-body {
+      padding: 0;
+      display: none;
+    }
+
+    .section.open .section-body {
+      display: block;
+    }
+
+    .section.open .section-toggle::after {
+      content: '▲';
+    }
+
+    .section-toggle::after {
+      content: '▼';
+      margin-left: 8px;
+    }
+
+    /* ========================================
+       アイテム一覧
+    ======================================== */
+    .item-list {
+      list-style: none;
+    }
+
+    .item {
+      padding: 12px 20px;
+      border-bottom: 1px solid #f0f0f0;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .item:last-child {
+      border-bottom: none;
+    }
+
+    .item:hover {
+      background: #fafafa;
+    }
+
+    .item-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      flex-shrink: 0;
+    }
+
+    .item-icon.error {
+      background: #fce8e6;
+      color: #c5221f;
+    }
+
+    .item-icon.warning {
+      background: #fef7e0;
+      color: #b06000;
+    }
+
+    .item-icon.review {
+      background: #e8f0fe;
+      color: #1a73e8;
+    }
+
+    .item-content {
+      flex: 1;
+    }
+
+    .item-title {
+      font-size: 14px;
+      font-weight: 500;
+      color: #333;
+    }
+
+    .item-detail {
+      font-size: 12px;
+      color: #666;
+      margin-top: 2px;
+    }
+
+    .item-meta {
+      font-size: 11px;
+      color: #999;
+      margin-top: 4px;
+    }
+
+    .item-status {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      white-space: nowrap;
+    }
+
+    .item-status.overdue {
+      background: #fce8e6;
+      color: #c5221f;
+    }
+
+    .item-status.due-soon {
+      background: #fef7e0;
+      color: #b06000;
+    }
+
+    .item-status.never {
+      background: #e0e0e0;
+      color: #666;
+    }
+
+    /* ========================================
+       空状態
+    ======================================== */
+    .empty-state {
+      padding: 40px 20px;
+      text-align: center;
+      color: #999;
+    }
+
+    .empty-state .icon {
+      font-size: 48px;
+      margin-bottom: 12px;
+    }
+
+    /* ========================================
+       ローディング
+    ======================================== */
+    .loading {
+      text-align: center;
+      padding: 48px;
+      color: #666;
+    }
+
+    /* ========================================
+       更新時刻
+    ======================================== */
+    .footer {
+      text-align: center;
+      padding: 24px;
+      color: #999;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <!-- ヘッダー -->
+  <header class="header">
+    <h1>管理画面</h1>
+    <nav class="header-nav">
+      <a href="?view=portal">ポータルへ戻る</a>
+      <a href="#" id="audit-log-link">監査ログ</a>
+      <a href="#" onclick="location.reload()">更新</a>
+    </nav>
+  </header>
+
+  <!-- メインコンテンツ -->
+  <main class="main" id="main">
+    <div class="loading">読み込み中...</div>
+  </main>
+
+  <!-- フッター -->
+  <footer class="footer" id="footer"></footer>
+
+  <!-- Validators読み込み -->
+  <?!= include('lib/validators'); ?>
+
+  <script>
+    /* ========================================
+       アプリケーション状態
+    ======================================== */
+    const AdminApp = {
+      config: <?!= configJson ?>,
+      validation: null
+    };
+
+    /* ========================================
+       初期化
+    ======================================== */
+    function init() {
+      console.log('AdminApp initialized:', AdminApp.config);
+
+      if (AdminApp.config.error) {
+        showError(AdminApp.config.error);
+        return;
+      }
+
+      // 設定を検証
+      AdminApp.validation = Validators.validateConfig(AdminApp.config);
+      console.log('Validation result:', AdminApp.validation);
+
+      // 画面描画
+      render();
+    }
+
+    /* ========================================
+       メイン描画
+    ======================================== */
+    function render() {
+      const main = document.getElementById('main');
+      const summary = Validators.getSummary(AdminApp.validation);
+
+      let html = '';
+
+      // サマリーカード
+      html += renderSummary(summary);
+
+      // 警告セクション（P0）
+      html += renderErrorSection(AdminApp.validation.errors);
+
+      // 注意セクション（P1）
+      html += renderWarningSection(AdminApp.validation.warnings);
+
+      // 棚卸セクション
+      html += renderReviewSection(AdminApp.validation.reviews);
+
+      main.innerHTML = html;
+
+      // セクション開閉のイベント設定
+      document.querySelectorAll('.section-header').forEach(header => {
+        header.addEventListener('click', () => {
+          header.parentElement.classList.toggle('open');
+        });
+      });
+
+      // フッター
+      document.getElementById('footer').textContent =
+        '最終更新: ' + new Date().toLocaleString('ja-JP');
+
+      // 監査ログリンク（スプレッドシートへ）
+      updateAuditLogLink();
+    }
+
+    /* ========================================
+       サマリーカード描画
+    ======================================== */
+    function renderSummary(summary) {
+      const isAllOk = summary.errorCount === 0 && summary.warningCount === 0 && summary.reviewOverdueCount === 0;
+
+      return `
+        <div class="summary-grid">
+          <div class="summary-card ${summary.errorCount > 0 ? 'error' : 'ok'}">
+            <div class="summary-label">警告（P0）</div>
+            <div class="summary-value ${summary.errorCount > 0 ? 'error' : 'ok'}">${summary.errorCount}</div>
+          </div>
+          <div class="summary-card ${summary.warningCount > 0 ? 'warning' : 'ok'}">
+            <div class="summary-label">注意（P1）</div>
+            <div class="summary-value ${summary.warningCount > 0 ? 'warning' : 'ok'}">${summary.warningCount}</div>
+          </div>
+          <div class="summary-card ${summary.reviewOverdueCount > 0 ? 'error' : 'review'}">
+            <div class="summary-label">棚卸期限切れ</div>
+            <div class="summary-value ${summary.reviewOverdueCount > 0 ? 'error' : 'review'}">${summary.reviewOverdueCount}</div>
+          </div>
+          <div class="summary-card review">
+            <div class="summary-label">棚卸期限近い</div>
+            <div class="summary-value review">${summary.reviewDueSoonCount}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    /* ========================================
+       警告セクション描画
+    ======================================== */
+    function renderErrorSection(errors) {
+      const count = errors.length;
+      const openClass = count > 0 ? ' open' : '';
+
+      let itemsHtml = '';
+      if (count === 0) {
+        itemsHtml = '<div class="empty-state"><div class="icon">✓</div><p>警告はありません</p></div>';
+      } else {
+        itemsHtml = '<ul class="item-list">';
+        errors.forEach(e => {
+          itemsHtml += `
+            <li class="item">
+              <div class="item-icon error">!</div>
+              <div class="item-content">
+                <div class="item-title">${escapeHtml(getErrorTitle(e))}</div>
+                <div class="item-detail">${escapeHtml(e.message)}</div>
+                <div class="item-meta">${escapeHtml(getErrorMeta(e))}</div>
+              </div>
+            </li>
+          `;
+        });
+        itemsHtml += '</ul>';
+      }
+
+      return `
+        <div class="section${openClass}">
+          <div class="section-header">
+            <div class="section-title">
+              警告（P0）
+              <span class="section-count${count > 0 ? ' error' : ''}">${count}件</span>
+            </div>
+            <span class="section-toggle"></span>
+          </div>
+          <div class="section-body">
+            ${itemsHtml}
+          </div>
+        </div>
+      `;
+    }
+
+    /* ========================================
+       注意セクション描画
+    ======================================== */
+    function renderWarningSection(warnings) {
+      const count = warnings.length;
+
+      let itemsHtml = '';
+      if (count === 0) {
+        itemsHtml = '<div class="empty-state"><div class="icon">✓</div><p>注意はありません</p></div>';
+      } else {
+        itemsHtml = '<ul class="item-list">';
+        warnings.forEach(w => {
+          itemsHtml += `
+            <li class="item">
+              <div class="item-icon warning">!</div>
+              <div class="item-content">
+                <div class="item-title">${escapeHtml(getErrorTitle(w))}</div>
+                <div class="item-detail">${escapeHtml(w.message)}</div>
+                <div class="item-meta">${escapeHtml(getErrorMeta(w))}</div>
+              </div>
+            </li>
+          `;
+        });
+        itemsHtml += '</ul>';
+      }
+
+      return `
+        <div class="section">
+          <div class="section-header">
+            <div class="section-title">
+              注意（P1）
+              <span class="section-count${count > 0 ? ' warning' : ''}">${count}件</span>
+            </div>
+            <span class="section-toggle"></span>
+          </div>
+          <div class="section-body">
+            ${itemsHtml}
+          </div>
+        </div>
+      `;
+    }
+
+    /* ========================================
+       棚卸セクション描画
+    ======================================== */
+    function renderReviewSection(reviews) {
+      const overdues = reviews.filter(r => r.status === 'overdue');
+      const dueSoons = reviews.filter(r => r.status === 'due_soon');
+      const nevers = reviews.filter(r => r.status === 'never_reviewed' || r.status === 'not_set');
+      const count = overdues.length + dueSoons.length + nevers.length;
+
+      // 期限切れ優先でソート
+      const sortedReviews = [...overdues, ...dueSoons, ...nevers];
+
+      let itemsHtml = '';
+      if (count === 0) {
+        itemsHtml = '<div class="empty-state"><div class="icon">✓</div><p>棚卸対象はありません</p></div>';
+      } else {
+        itemsHtml = '<ul class="item-list">';
+        sortedReviews.forEach(r => {
+          const statusClass = r.status === 'overdue' ? 'overdue' :
+                              r.status === 'due_soon' ? 'due-soon' : 'never';
+          const statusLabel = r.status === 'overdue' ? '期限切れ' :
+                              r.status === 'due_soon' ? '期限近い' :
+                              r.status === 'never_reviewed' ? '未レビュー' : '未設定';
+
+          itemsHtml += `
+            <li class="item">
+              <div class="item-icon review">📋</div>
+              <div class="item-content">
+                <div class="item-title">${escapeHtml(r.title || r.widgetId)}</div>
+                <div class="item-detail">${escapeHtml(r.message)}</div>
+                <div class="item-meta">
+                  ID: ${escapeHtml(r.widgetId)} / 管理者: ${escapeHtml(r.owner)} / 周期: ${escapeHtml(r.reviewCycle)}
+                  ${r.lastReviewedAt ? ' / 最終レビュー: ' + r.lastReviewedAt : ''}
+                </div>
+              </div>
+              <span class="item-status ${statusClass}">${statusLabel}</span>
+            </li>
+          `;
+        });
+        itemsHtml += '</ul>';
+      }
+
+      return `
+        <div class="section${overdues.length > 0 ? ' open' : ''}">
+          <div class="section-header">
+            <div class="section-title">
+              棚卸
+              <span class="section-count${overdues.length > 0 ? ' error' : ''}">${count}件</span>
+            </div>
+            <span class="section-toggle"></span>
+          </div>
+          <div class="section-body">
+            ${itemsHtml}
+          </div>
+        </div>
+      `;
+    }
+
+    /* ========================================
+       ヘルパー関数
+    ======================================== */
+    function getErrorTitle(e) {
+      const typeLabels = {
+        'duplicate_page_id': 'ページID重複',
+        'duplicate_widget_id': 'ウィジェットID重複',
+        'duplicate_asset_id': 'アセットID重複',
+        'duplicate_content_id': 'HTML本文ID重複',
+        'broken_html_ref': 'HTML参照切れ',
+        'broken_asset_ref': 'アセット参照切れ',
+        'broken_icon_ref': 'アイコン参照切れ',
+        'broken_header_ref': 'ヘッダー画像参照切れ',
+        'missing_url': 'URL未設定',
+        'orphan_layout': '孤児レイアウト',
+        'no_layout': 'レイアウト未設定',
+        'manual_collision': 'Manual配置衝突',
+        'validator_error': '検証エラー'
+      };
+      return typeLabels[e.type] || e.type;
+    }
+
+    function getErrorMeta(e) {
+      const parts = [];
+      if (e.pageId) parts.push('ページ: ' + e.pageId);
+      if (e.widgetId) parts.push('ウィジェット: ' + e.widgetId);
+      if (e.id) parts.push('ID: ' + e.id);
+      if (e.bp) parts.push('BP: ' + e.bp);
+      if (e.refId) parts.push('参照: ' + e.refId);
+      if (e.assetId) parts.push('アセット: ' + e.assetId);
+      if (e.widget1 && e.widget2) parts.push('衝突: ' + e.widget1 + ' ↔ ' + e.widget2);
+      return parts.join(' / ') || '';
+    }
+
+    function updateAuditLogLink() {
+      // スプレッドシートへのリンク（今後改善）
+      const link = document.getElementById('audit-log-link');
+      link.onclick = function(e) {
+        e.preventDefault();
+        alert('監査ログはスプレッドシートの「08_監査ログ」シートを参照してください。');
+      };
+    }
+
+    function showError(message) {
+      const main = document.getElementById('main');
+      main.innerHTML = `
+        <div class="section open">
+          <div class="section-header">
+            <div class="section-title">エラー</div>
+          </div>
+          <div class="section-body">
+            <div class="empty-state" style="color: #c5221f;">
+              <div class="icon">⚠️</div>
+              <p>${escapeHtml(message)}</p>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    /* ========================================
+       初期化実行
+    ======================================== */
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>
