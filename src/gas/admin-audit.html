@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>監査ログ - ポータルダッシュボード</title>
+  <style>
+    /* ========================================
+       リセット・ベース
+    ======================================== */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background-color: #f5f5f5;
+      color: #333;
+      line-height: 1.6;
+    }
+
+    a {
+      color: #1a73e8;
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    /* ========================================
+       ヘッダー
+    ======================================== */
+    .header {
+      background-color: #333;
+      color: white;
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .header h1 {
+      font-size: 18px;
+      font-weight: 500;
+    }
+
+    .header-nav {
+      display: flex;
+      gap: 16px;
+    }
+
+    .header-nav a {
+      color: white;
+      opacity: 0.9;
+      font-size: 13px;
+    }
+
+    .header-nav a:hover {
+      opacity: 1;
+      text-decoration: none;
+    }
+
+    /* ========================================
+       メインレイアウト
+    ======================================== */
+    .main {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    /* ========================================
+       フィルタバー
+    ======================================== */
+    .filter-bar {
+      background: white;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .filter-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: flex-end;
+    }
+
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .filter-group label {
+      font-size: 11px;
+      color: #666;
+      font-weight: 500;
+    }
+
+    .filter-group input,
+    .filter-group select {
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 13px;
+      min-width: 120px;
+    }
+
+    .filter-group input[type="date"] {
+      min-width: 140px;
+    }
+
+    .filter-group input:focus,
+    .filter-group select:focus {
+      outline: none;
+      border-color: #1a73e8;
+    }
+
+    .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: #1a73e8;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #1557b0;
+    }
+
+    .btn-secondary {
+      background: #f5f5f5;
+      color: #333;
+      border: 1px solid #ddd;
+    }
+
+    .btn-secondary:hover {
+      background: #e8e8e8;
+    }
+
+    .filter-stats {
+      margin-left: auto;
+      font-size: 13px;
+      color: #666;
+    }
+
+    /* ========================================
+       テーブル
+    ======================================== */
+    .table-container {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    thead {
+      background: #f5f5f5;
+    }
+
+    th, td {
+      padding: 12px 16px;
+      text-align: left;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    th {
+      font-weight: 500;
+      color: #666;
+      white-space: nowrap;
+    }
+
+    tbody tr {
+      cursor: pointer;
+    }
+
+    tbody tr:hover {
+      background: #f5f5f5;
+    }
+
+    tbody tr.selected {
+      background: #e8f0fe;
+    }
+
+    .timestamp-cell {
+      white-space: nowrap;
+      font-family: monospace;
+      font-size: 12px;
+    }
+
+    .actor-cell {
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .badge-action {
+      background: #e8f0fe;
+      color: #1a73e8;
+    }
+
+    .badge-ok {
+      background: #e8f5e9;
+      color: #2e7d32;
+    }
+
+    .badge-failed {
+      background: #fce8e6;
+      color: #c5221f;
+    }
+
+    .page-id-cell {
+      font-family: monospace;
+      font-size: 12px;
+      color: #666;
+    }
+
+    .bp-cell {
+      font-family: monospace;
+      font-size: 12px;
+      color: #999;
+    }
+
+    /* ========================================
+       詳細モーダル
+    ======================================== */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal {
+      background: white;
+      border-radius: 8px;
+      max-width: 900px;
+      width: 90%;
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    }
+
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid #e0e0e0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .modal-header h2 {
+      font-size: 16px;
+      font-weight: 500;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      color: #666;
+      padding: 4px 8px;
+      line-height: 1;
+    }
+
+    .modal-close:hover {
+      color: #333;
+    }
+
+    .modal-body {
+      padding: 20px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .detail-item {
+      background: #f5f5f5;
+      padding: 12px;
+      border-radius: 4px;
+    }
+
+    .detail-item label {
+      display: block;
+      font-size: 11px;
+      color: #666;
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+
+    .detail-item .value {
+      font-size: 14px;
+      word-break: break-all;
+    }
+
+    .json-section {
+      margin-bottom: 20px;
+    }
+
+    .json-section h3 {
+      font-size: 14px;
+      font-weight: 500;
+      color: #333;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .json-content {
+      background: #282c34;
+      color: #abb2bf;
+      padding: 16px;
+      border-radius: 4px;
+      overflow-x: auto;
+      font-family: 'Consolas', 'Monaco', monospace;
+      font-size: 12px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .json-empty {
+      color: #999;
+      font-style: italic;
+      padding: 16px;
+      text-align: center;
+      background: #f5f5f5;
+      border-radius: 4px;
+    }
+
+    .message-section {
+      margin-bottom: 20px;
+    }
+
+    .message-section h3 {
+      font-size: 14px;
+      font-weight: 500;
+      color: #333;
+      margin-bottom: 8px;
+    }
+
+    .message-content {
+      background: #f5f5f5;
+      padding: 12px;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+
+    /* ========================================
+       空状態
+    ======================================== */
+    .empty-state {
+      padding: 60px 20px;
+      text-align: center;
+      color: #999;
+    }
+
+    .empty-state .icon {
+      font-size: 48px;
+      margin-bottom: 12px;
+    }
+
+    /* ========================================
+       ローディング
+    ======================================== */
+    .loading {
+      text-align: center;
+      padding: 48px;
+      color: #666;
+    }
+
+    .loading-spinner {
+      display: inline-block;
+      width: 32px;
+      height: 32px;
+      border: 3px solid #e0e0e0;
+      border-top-color: #1a73e8;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* ========================================
+       トースト
+    ======================================== */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 12px 24px;
+      background: #333;
+      color: white;
+      border-radius: 6px;
+      font-size: 13px;
+      z-index: 1001;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+
+    .toast-error {
+      background: #c5221f;
+    }
+  </style>
+</head>
+<body>
+  <!-- ヘッダー -->
+  <header class="header">
+    <h1>監査ログ</h1>
+    <nav class="header-nav">
+      <a href="?view=admin">管理トップ</a>
+      <a href="?view=portal">ポータルへ戻る</a>
+    </nav>
+  </header>
+
+  <!-- メイン -->
+  <main class="main">
+    <!-- フィルタバー -->
+    <div class="filter-bar">
+      <div class="filter-row">
+        <div class="filter-group">
+          <label>開始日</label>
+          <input type="date" id="filter-start-date">
+        </div>
+        <div class="filter-group">
+          <label>終了日</label>
+          <input type="date" id="filter-end-date">
+        </div>
+        <div class="filter-group">
+          <label>操作者</label>
+          <input type="text" id="filter-actor" placeholder="メールで検索...">
+        </div>
+        <div class="filter-group">
+          <label>アクション</label>
+          <select id="filter-action">
+            <option value="">すべて</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>結果</label>
+          <select id="filter-result">
+            <option value="">すべて</option>
+            <option value="ok">ok</option>
+            <option value="failed">failed</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>ページID</label>
+          <input type="text" id="filter-page-id" placeholder="ID検索...">
+        </div>
+        <button class="btn btn-primary" onclick="AuditAdmin.applyFilters()">検索</button>
+        <button class="btn btn-secondary" onclick="AuditAdmin.clearFilters()">クリア</button>
+        <div class="filter-stats" id="filter-stats"></div>
+      </div>
+    </div>
+
+    <!-- テーブル -->
+    <div class="table-container" id="table-container">
+      <div class="loading">
+        <div class="loading-spinner"></div>
+        <p>読み込み中...</p>
+      </div>
+    </div>
+  </main>
+
+  <!-- 詳細モーダル -->
+  <div class="modal-overlay" id="modal-overlay" style="display: none;">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>ログ詳細</h2>
+        <button class="modal-close" onclick="AuditAdmin.closeModal()">&times;</button>
+      </div>
+      <div class="modal-body" id="modal-body">
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ========================================
+       アプリケーション状態
+    ======================================== */
+    const AuditAdmin = {
+      logs: [],
+      totalCount: 0,
+      actions: [],
+      selectedLog: null,
+
+      /* ========================================
+         初期化
+      ======================================== */
+      init: function() {
+        console.log('AuditAdmin initialized');
+
+        // URLパラメータからフィルタを設定
+        this.parseUrlParams();
+
+        // データ読み込み
+        this.loadLogs();
+
+        // Escキーでモーダルを閉じる
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape') {
+            this.closeModal();
+          }
+        });
+      },
+
+      /* ========================================
+         URLパラメータ解析
+      ======================================== */
+      parseUrlParams: function() {
+        const params = new URLSearchParams(window.location.search);
+
+        if (params.get('action')) {
+          document.getElementById('filter-action').value = params.get('action');
+        }
+        if (params.get('page_id')) {
+          document.getElementById('filter-page-id').value = params.get('page_id');
+        }
+        if (params.get('actor')) {
+          document.getElementById('filter-actor').value = params.get('actor');
+        }
+        if (params.get('result')) {
+          document.getElementById('filter-result').value = params.get('result');
+        }
+      },
+
+      /* ========================================
+         フィルタパラメータ取得
+      ======================================== */
+      getFilterParams: function() {
+        return {
+          limit: 200,
+          start_date: document.getElementById('filter-start-date').value,
+          end_date: document.getElementById('filter-end-date').value,
+          actor: document.getElementById('filter-actor').value,
+          action: document.getElementById('filter-action').value,
+          result: document.getElementById('filter-result').value,
+          page_id: document.getElementById('filter-page-id').value
+        };
+      },
+
+      /* ========================================
+         ログ読み込み
+      ======================================== */
+      loadLogs: function() {
+        const container = document.getElementById('table-container');
+        container.innerHTML = `
+          <div class="loading">
+            <div class="loading-spinner"></div>
+            <p>読み込み中...</p>
+          </div>
+        `;
+
+        const params = this.getFilterParams();
+
+        google.script.run
+          .withSuccessHandler(this.onLogsLoaded.bind(this))
+          .withFailureHandler(this.onLoadError.bind(this))
+          .listAuditLogs(params);
+      },
+
+      /* ========================================
+         読み込み成功
+      ======================================== */
+      onLogsLoaded: function(result) {
+        if (!result.ok) {
+          this.showToast(result.error || '読み込みに失敗しました', 'error');
+          return;
+        }
+
+        this.logs = result.logs || [];
+        this.totalCount = result.totalCount || 0;
+        this.actions = result.actions || [];
+
+        // アクションフィルタを更新
+        this.updateActionFilter();
+
+        // テーブル描画
+        this.renderTable();
+
+        // 統計表示
+        this.updateStats();
+
+        // メッセージがあれば表示
+        if (result.message) {
+          this.showToast(result.message, 'info');
+        }
+      },
+
+      /* ========================================
+         読み込みエラー
+      ======================================== */
+      onLoadError: function(error) {
+        console.error('Load error:', error);
+        this.showToast('エラー: ' + error.message, 'error');
+
+        const container = document.getElementById('table-container');
+        container.innerHTML = `
+          <div class="empty-state">
+            <div class="icon">!</div>
+            <p>データの読み込みに失敗しました</p>
+            <p style="font-size: 12px; color: #999;">${this.escapeHtml(error.message)}</p>
+          </div>
+        `;
+      },
+
+      /* ========================================
+         アクションフィルタ更新
+      ======================================== */
+      updateActionFilter: function() {
+        const select = document.getElementById('filter-action');
+        const currentValue = select.value;
+
+        // 既存のオプションをクリア（最初の「すべて」は残す）
+        while (select.options.length > 1) {
+          select.remove(1);
+        }
+
+        // アクション一覧を追加
+        this.actions.forEach(action => {
+          const option = document.createElement('option');
+          option.value = action;
+          option.textContent = action;
+          select.appendChild(option);
+        });
+
+        // 元の値を復元
+        if (currentValue) {
+          select.value = currentValue;
+        }
+      },
+
+      /* ========================================
+         統計表示
+      ======================================== */
+      updateStats: function() {
+        const stats = document.getElementById('filter-stats');
+        if (this.totalCount === 0) {
+          stats.textContent = '';
+        } else if (this.logs.length < this.totalCount) {
+          stats.textContent = `${this.logs.length} / ${this.totalCount} 件表示`;
+        } else {
+          stats.textContent = `${this.totalCount} 件`;
+        }
+      },
+
+      /* ========================================
+         テーブル描画
+      ======================================== */
+      renderTable: function() {
+        const container = document.getElementById('table-container');
+
+        if (this.logs.length === 0) {
+          container.innerHTML = `
+            <div class="empty-state">
+              <div class="icon">{ }</div>
+              <p>監査ログがありません</p>
+            </div>
+          `;
+          return;
+        }
+
+        let html = `
+          <table>
+            <thead>
+              <tr>
+                <th>日時</th>
+                <th>操作者</th>
+                <th>アクション</th>
+                <th>ページID</th>
+                <th>BP</th>
+                <th>結果</th>
+              </tr>
+            </thead>
+            <tbody>
+        `;
+
+        this.logs.forEach((log, index) => {
+          const resultClass = log.result === 'ok' ? 'badge-ok' :
+                              log.result === 'failed' ? 'badge-failed' : '';
+
+          html += `
+            <tr onclick="AuditAdmin.showDetail(${index})">
+              <td class="timestamp-cell">${this.formatDisplayTimestamp(log.timestamp)}</td>
+              <td class="actor-cell" title="${this.escapeHtml(log.actor)}">${this.escapeHtml(log.actor)}</td>
+              <td><span class="badge badge-action">${this.escapeHtml(log.action)}</span></td>
+              <td class="page-id-cell">${this.escapeHtml(log.page_id) || '-'}</td>
+              <td class="bp-cell">${this.escapeHtml(log.bp) || '-'}</td>
+              <td><span class="badge ${resultClass}">${this.escapeHtml(log.result)}</span></td>
+            </tr>
+          `;
+        });
+
+        html += '</tbody></table>';
+        container.innerHTML = html;
+      },
+
+      /* ========================================
+         詳細表示
+      ======================================== */
+      showDetail: function(index) {
+        const log = this.logs[index];
+        if (!log) return;
+
+        this.selectedLog = log;
+
+        const body = document.getElementById('modal-body');
+
+        // 基本情報
+        let html = `
+          <div class="detail-grid">
+            <div class="detail-item">
+              <label>日時</label>
+              <div class="value">${this.escapeHtml(log.timestamp)}</div>
+            </div>
+            <div class="detail-item">
+              <label>操作者</label>
+              <div class="value">${this.escapeHtml(log.actor)}</div>
+            </div>
+            <div class="detail-item">
+              <label>アクション</label>
+              <div class="value">${this.escapeHtml(log.action)}</div>
+            </div>
+            <div class="detail-item">
+              <label>結果</label>
+              <div class="value">${this.escapeHtml(log.result)}</div>
+            </div>
+            <div class="detail-item">
+              <label>ページID</label>
+              <div class="value">${this.escapeHtml(log.page_id) || '-'}</div>
+            </div>
+            <div class="detail-item">
+              <label>BP</label>
+              <div class="value">${this.escapeHtml(log.bp) || '-'}</div>
+            </div>
+          </div>
+        `;
+
+        // メッセージ
+        if (log.message) {
+          html += `
+            <div class="message-section">
+              <h3>メッセージ</h3>
+              <div class="message-content">${this.escapeHtml(log.message)}</div>
+            </div>
+          `;
+        }
+
+        // Before JSON
+        html += `
+          <div class="json-section">
+            <h3>Before（変更前）</h3>
+            ${this.renderJsonContent(log.before_json)}
+          </div>
+        `;
+
+        // After JSON
+        html += `
+          <div class="json-section">
+            <h3>After（変更後）</h3>
+            ${this.renderJsonContent(log.after_json)}
+          </div>
+        `;
+
+        body.innerHTML = html;
+        document.getElementById('modal-overlay').style.display = 'flex';
+      },
+
+      /* ========================================
+         JSON内容レンダリング
+      ======================================== */
+      renderJsonContent: function(jsonStr) {
+        if (!jsonStr || jsonStr === '') {
+          return '<div class="json-empty">（空）</div>';
+        }
+
+        try {
+          const parsed = JSON.parse(jsonStr);
+          const formatted = JSON.stringify(parsed, null, 2);
+          return `<pre class="json-content">${this.escapeHtml(formatted)}</pre>`;
+        } catch (e) {
+          // パース失敗時は文字列として表示
+          return `<pre class="json-content">${this.escapeHtml(jsonStr)}</pre>`;
+        }
+      },
+
+      /* ========================================
+         モーダルを閉じる
+      ======================================== */
+      closeModal: function() {
+        document.getElementById('modal-overlay').style.display = 'none';
+        this.selectedLog = null;
+      },
+
+      /* ========================================
+         フィルタ適用
+      ======================================== */
+      applyFilters: function() {
+        this.loadLogs();
+      },
+
+      /* ========================================
+         フィルタクリア
+      ======================================== */
+      clearFilters: function() {
+        document.getElementById('filter-start-date').value = '';
+        document.getElementById('filter-end-date').value = '';
+        document.getElementById('filter-actor').value = '';
+        document.getElementById('filter-action').value = '';
+        document.getElementById('filter-result').value = '';
+        document.getElementById('filter-page-id').value = '';
+        this.loadLogs();
+      },
+
+      /* ========================================
+         タイムスタンプフォーマット
+      ======================================== */
+      formatDisplayTimestamp: function(timestamp) {
+        if (!timestamp) return '-';
+
+        try {
+          const date = new Date(timestamp);
+          if (isNaN(date.getTime())) {
+            return timestamp;
+          }
+
+          const y = date.getFullYear();
+          const m = String(date.getMonth() + 1).padStart(2, '0');
+          const d = String(date.getDate()).padStart(2, '0');
+          const h = String(date.getHours()).padStart(2, '0');
+          const min = String(date.getMinutes()).padStart(2, '0');
+          const s = String(date.getSeconds()).padStart(2, '0');
+
+          return `${y}-${m}-${d} ${h}:${min}:${s}`;
+        } catch (e) {
+          return timestamp;
+        }
+      },
+
+      /* ========================================
+         トースト
+      ======================================== */
+      showToast: function(message, type) {
+        const existing = document.querySelector('.toast');
+        if (existing) existing.remove();
+
+        const toast = document.createElement('div');
+        toast.className = 'toast' + (type === 'error' ? ' toast-error' : '');
+        toast.textContent = message;
+        document.body.appendChild(toast);
+
+        setTimeout(() => toast.remove(), 3000);
+      },
+
+      /* ========================================
+         ヘルパー
+      ======================================== */
+      escapeHtml: function(str) {
+        if (!str) return '';
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;');
+      }
+    };
+
+    /* ========================================
+       初期化実行
+    ======================================== */
+    document.addEventListener('DOMContentLoaded', () => AuditAdmin.init());
+  </script>
+</body>
+</html>

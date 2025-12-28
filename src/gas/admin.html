@@ -342,8 +342,8 @@
       <a href="?view=admin_pages">ページ管理</a>
       <a href="?view=admin_assets">アセット管理</a>
       <a href="?view=admin_html">HTML本文管理</a>
+      <a href="?view=admin_audit">監査ログ</a>
       <a href="?view=portal">ポータルへ戻る</a>
-      <a href="#" id="audit-log-link">監査ログ</a>
       <a href="#" onclick="location.reload()">更新</a>
     </nav>
   </header>
@@ -420,9 +420,6 @@
       // フッター
       document.getElementById('footer').textContent =
         '最終更新: ' + new Date().toLocaleString('ja-JP');
-
-      // 監査ログリンク（スプレッドシートへ）
-      updateAuditLogLink();
     }
 
     /* ========================================
@@ -628,15 +625,6 @@
       if (e.assetId) parts.push('アセット: ' + e.assetId);
       if (e.widget1 && e.widget2) parts.push('衝突: ' + e.widget1 + ' ↔ ' + e.widget2);
       return parts.join(' / ') || '';
-    }
-
-    function updateAuditLogLink() {
-      // スプレッドシートへのリンク（今後改善）
-      const link = document.getElementById('audit-log-link');
-      link.onclick = function(e) {
-        e.preventDefault();
-        alert('監査ログはスプレッドシートの「08_監査ログ」シートを参照してください。');
-      };
     }
 
     function showError(message) {
