@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ポータルダッシュボード</title>
+  <style>
+    /* リセット */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background-color: #f5f5f5;
+      color: #333;
+      line-height: 1.6;
+    }
+
+    /* ヘッダー */
+    .header {
+      background-color: #1a73e8;
+      color: white;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .header h1 {
+      font-size: 20px;
+      font-weight: 500;
+    }
+
+    .header-meta {
+      font-size: 12px;
+      opacity: 0.8;
+    }
+
+    /* ページタブ */
+    .page-tabs {
+      background-color: white;
+      border-bottom: 1px solid #e0e0e0;
+      padding: 0 24px;
+      display: flex;
+      gap: 4px;
+    }
+
+    .page-tab {
+      padding: 12px 16px;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      color: #666;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+
+    .page-tab:hover {
+      background-color: #f5f5f5;
+    }
+
+    .page-tab.active {
+      color: #1a73e8;
+      border-bottom-color: #1a73e8;
+      font-weight: 500;
+    }
+
+    /* メインコンテンツ */
+    .main {
+      padding: 24px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    /* ページヘッダー画像 */
+    .page-header-image {
+      width: 100%;
+      max-height: 200px;
+      object-fit: cover;
+      border-radius: 8px;
+      margin-bottom: 24px;
+    }
+
+    /* セクションタイトル */
+    .section-title {
+      font-size: 16px;
+      font-weight: 500;
+      margin-bottom: 16px;
+      color: #333;
+    }
+
+    /* ウィジェット一覧（最小実装） */
+    .widget-list {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    }
+
+    .widget-card {
+      background: white;
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      border: 1px solid #e0e0e0;
+      transition: box-shadow 0.2s;
+    }
+
+    .widget-card:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .widget-card .widget-title {
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 8px;
+    }
+
+    .widget-card .widget-type {
+      font-size: 12px;
+      color: #666;
+      background: #f0f0f0;
+      padding: 2px 8px;
+      border-radius: 4px;
+      display: inline-block;
+    }
+
+    .widget-card .widget-url {
+      font-size: 11px;
+      color: #999;
+      margin-top: 8px;
+      word-break: break-all;
+    }
+
+    /* メタ情報 */
+    .meta-info {
+      margin-top: 32px;
+      padding: 16px;
+      background: #e8f0fe;
+      border-radius: 8px;
+      font-size: 12px;
+      color: #1a73e8;
+    }
+
+    .meta-info h3 {
+      font-size: 14px;
+      margin-bottom: 8px;
+    }
+
+    .meta-info ul {
+      list-style: none;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    /* ローディング */
+    .loading {
+      text-align: center;
+      padding: 48px;
+      color: #666;
+    }
+
+    /* エラー */
+    .error {
+      background: #fce8e6;
+      color: #c5221f;
+      padding: 16px;
+      border-radius: 8px;
+      margin: 16px 0;
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <h1 id="page-title">ポータルダッシュボード</h1>
+    <span class="header-meta" id="header-meta"></span>
+  </header>
+
+  <nav class="page-tabs" id="page-tabs">
+    <!-- ページタブはJSで生成 -->
+  </nav>
+
+  <main class="main" id="main">
+    <div class="loading">読み込み中...</div>
+  </main>
+
+  <script>
+    // サーバーから渡された設定データ
+    const CONFIG = <?!= configJson ?>;
+    const CURRENT_PAGE_ID = '<?= pageId ?>';
+
+    /**
+     * 初期化
+     */
+    function init() {
+      console.log('Config loaded:', CONFIG);
+
+      if (CONFIG.error) {
+        showError(CONFIG.error);
+        return;
+      }
+
+      renderPageTabs();
+      renderPage(CURRENT_PAGE_ID);
+      updateHeaderMeta();
+    }
+
+    /**
+     * ページタブを描画
+     */
+    function renderPageTabs() {
+      const tabsContainer = document.getElementById('page-tabs');
+      tabsContainer.innerHTML = '';
+
+      if (!CONFIG.pages || CONFIG.pages.length === 0) {
+        return;
+      }
+
+      CONFIG.pages.forEach(page => {
+        const tab = document.createElement('div');
+        tab.className = 'page-tab' + (page.pageId === CURRENT_PAGE_ID ? ' active' : '');
+        tab.textContent = page.pageTitle;
+        tab.onclick = () => navigateToPage(page.pageId);
+        tabsContainer.appendChild(tab);
+      });
+    }
+
+    /**
+     * ページ遷移
+     */
+    function navigateToPage(pageId) {
+      const url = window.location.href.split('?')[0] + '?page=' + encodeURIComponent(pageId);
+      window.location.href = url;
+    }
+
+    /**
+     * ページを描画
+     */
+    function renderPage(pageId) {
+      const main = document.getElementById('main');
+      const page = CONFIG.pages.find(p => p.pageId === pageId);
+
+      if (!page) {
+        main.innerHTML = '<div class="error">ページが見つかりません: ' + pageId + '</div>';
+        return;
+      }
+
+      // ページタイトルを更新
+      document.getElementById('page-title').textContent = page.pageTitle;
+      document.title = page.pageTitle + ' - ポータルダッシュボード';
+
+      // メインコンテンツ構築
+      let html = '';
+
+      // ヘッダー画像（あれば）
+      if (page.headerAssetId && CONFIG.assets[page.headerAssetId]) {
+        const asset = CONFIG.assets[page.headerAssetId];
+        html += '<img class="page-header-image" src="' + escapeHtml(asset.url) + '" alt="' + escapeHtml(asset.altText) + '">';
+      }
+
+      // ウィジェット一覧
+      const widgets = CONFIG.widgets.filter(w => w.defaultPage === pageId && w.visible);
+
+      html += '<h2 class="section-title">ウィジェット一覧（' + widgets.length + '件）</h2>';
+      html += '<div class="widget-list">';
+
+      if (widgets.length === 0) {
+        html += '<p>このページにウィジェットはありません。</p>';
+      } else {
+        widgets.forEach(widget => {
+          html += renderWidgetCard(widget);
+        });
+      }
+
+      html += '</div>';
+
+      // メタ情報（デバッグ用）
+      html += renderMetaInfo();
+
+      main.innerHTML = html;
+    }
+
+    /**
+     * ウィジェットカードを描画
+     */
+    function renderWidgetCard(widget) {
+      const typeLabels = {
+        link: 'リンク',
+        embed: '埋め込み',
+        image: '画像',
+        pdf: 'PDF',
+        sheet: 'スプレッドシート',
+        html: 'HTML',
+        text: 'テキスト',
+        divider: '区切り'
+      };
+
+      let urlDisplay = widget.urlOrRef || '(未設定)';
+      if (urlDisplay.length > 50) {
+        urlDisplay = urlDisplay.substring(0, 50) + '...';
+      }
+
+      return `
+        <div class="widget-card">
+          <div class="widget-title">${escapeHtml(widget.title)}</div>
+          <span class="widget-type">${typeLabels[widget.type] || widget.type}</span>
+          <div class="widget-url">${escapeHtml(urlDisplay)}</div>
+        </div>
+      `;
+    }
+
+    /**
+     * メタ情報を描画（デバッグ用）
+     */
+    function renderMetaInfo() {
+      if (!CONFIG.meta) return '';
+
+      const counts = CONFIG.meta.counts;
+      return `
+        <div class="meta-info">
+          <h3>設定データ読み込み情報</h3>
+          <ul>
+            <li>ページ: ${counts.pages}件</li>
+            <li>ウィジェット: ${counts.widgets}件</li>
+            <li>レイアウト: ${counts.layout}件</li>
+            <li>アセット: ${counts.assets}件</li>
+            <li>HTML本文: ${counts.htmlContent}件</li>
+          </ul>
+        </div>
+      `;
+    }
+
+    /**
+     * ヘッダーメタを更新
+     */
+    function updateHeaderMeta() {
+      const meta = document.getElementById('header-meta');
+      if (CONFIG.meta && CONFIG.meta.loadedAt) {
+        const date = new Date(CONFIG.meta.loadedAt);
+        meta.textContent = '最終読込: ' + date.toLocaleString('ja-JP');
+      }
+    }
+
+    /**
+     * エラー表示
+     */
+    function showError(message) {
+      const main = document.getElementById('main');
+      main.innerHTML = '<div class="error"><strong>エラー:</strong> ' + escapeHtml(message) + '</div>';
+    }
+
+    /**
+     * HTMLエスケープ
+     */
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    // 初期化実行
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>
