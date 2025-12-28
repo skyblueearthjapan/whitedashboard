@@ -29,6 +29,9 @@ function doGet(e) {
     if (view === 'admin_widgets') {
       return renderAdminWidgetsView(isEditor);
     }
+    if (view === 'admin_pages') {
+      return renderAdminPagesView(isEditor);
+    }
 
     // 通常のポータル画面
     return renderPortalView(pageId, isEditor);
@@ -128,6 +131,39 @@ function renderAdminWidgetsView(isEditor) {
   // HTMLを生成
   const output = template.evaluate()
     .setTitle('ウィジェット管理 - ポータルダッシュボード')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+
+  return output;
+}
+
+/**
+ * ページ管理画面を描画
+ * @param {boolean} isEditor
+ * @returns {HtmlOutput}
+ */
+function renderAdminPagesView(isEditor) {
+  // Editorでない場合はアクセス拒否
+  if (!isEditor) {
+    return HtmlService.createHtmlOutput(
+      '<html><body style="font-family: sans-serif; padding: 40px; text-align: center;">' +
+      '<h1>アクセス権限がありません</h1>' +
+      '<p>この画面はEditor権限が必要です。</p>' +
+      '<p><a href="?view=portal">ポータルへ戻る</a></p>' +
+      '</body></html>'
+    ).setTitle('アクセス拒否');
+  }
+
+  // HTMLテンプレートを読み込み
+  const template = HtmlService.createTemplateFromFile('admin-pages');
+
+  // 設定データを取得
+  const config = getConfig();
+  template.configJson = JSON.stringify(config);
+
+  // HTMLを生成
+  const output = template.evaluate()
+    .setTitle('ページ管理 - ポータルダッシュボード')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 
