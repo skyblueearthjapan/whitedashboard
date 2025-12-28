@@ -1,0 +1,327 @@
+<script>
+/**
+ * layout-engine.js
+ * Phase3準拠：レイアウト計算エンジン
+ *
+ * 優先順位：
+ * 1. visible=FALSE は配置計算から除外
+ * 2. manual配置（auto=FALSE かつ x,yあり）を先に配置
+ * 3. auto配置（auto=TRUE または x/y未指定）を後から配置
+ * 4. manual同士の衝突は warnings に出す
+ *
+ * 探索戦略（決定的）：
+ * - y = 1 から増加（上から下へ）
+ * - 各 y に対して x = 1 から増加（左から右へ）
+ * - 最初に置けた場所に確定
+ */
+
+const LayoutEngine = {
+  // デフォルト値
+  DEFAULT_W: 2,
+  DEFAULT_H: 2,
+  MAX_Y_SEARCH: 100,  // 無限ループ防止
+
+  /**
+   * 配置計算メイン
+   * @param {string} pageId - ページID
+   * @param {string} bp - ブレイクポイント（PC/TABLET/MOBILE）
+   * @param {Object} config - App.config
+   * @returns {Object} { rects: Array, warnings: Array }
+   */
+  computeLayout: function(pageId, bp, config) {
+    const warnings = [];
+    const rects = [];
+
+    // ページ定義を取得
+    const page = config.pages.find(p => p.pageId === pageId);
+    if (!page) {
+      warnings.push({ type: 'error', message: 'ページが見つかりません: ' + pageId });
+      return { rects, warnings };
+    }
+
+    // 列数を取得（01_ページから）
+    const cols = this.getColsForBp(page, bp);
+
+    // visible=TRUE のウィジェットを取得
+    const visibleWidgets = config.widgets.filter(w =>
+      w.defaultPage === pageId && w.visible
+    );
+
+    if (visibleWidgets.length === 0) {
+      return { rects, warnings };
+    }
+
+    // 03_レイアウトから該当BP/ページのレイアウト行を取得
+    const layoutRows = config.layout.filter(l =>
+      l.pageId === pageId && l.breakpoint === bp
+    );
+
+    // ウィジェットIDでレイアウト情報をマップ
+    const layoutMap = {};
+    layoutRows.forEach(l => {
+      layoutMap[l.widgetId] = l;
+    });
+
+    // manual / auto を分類
+    const manualWidgets = [];
+    const autoWidgets = [];
+
+    visibleWidgets.forEach(widget => {
+      const layout = layoutMap[widget.widgetId];
+      if (this.isManual(layout)) {
+        manualWidgets.push({ widget, layout });
+      } else {
+        autoWidgets.push({ widget, layout });
+      }
+    });
+
+    // placedRects: 配置済み矩形リスト
+    const placedRects = [];
+
+    // 1. manual配置を先に処理
+    manualWidgets.forEach(({ widget, layout }) => {
+      const rect = this.normalizeRect({
+        widgetId: widget.widgetId,
+        x: layout.x,
+        y: layout.y,
+        w: layout.w || this.DEFAULT_W,
+        h: layout.h || this.DEFAULT_H,
+        bp: bp,
+        pageId: pageId,
+        source: 'manual'
+      }, cols);
+
+      // manual同士の衝突チェック
+      const collision = this.findCollision(rect, placedRects);
+      if (collision) {
+        warnings.push({
+          type: 'collision',
+          message: 'manual配置が衝突しています',
+          widgetId: widget.widgetId,
+          collidesWithWidgetId: collision.widgetId
+        });
+        // 衝突しても配置する（警告のみ）
+      }
+
+      placedRects.push(rect);
+      rects.push(rect);
+    });
+
+    // 2. auto配置をソートして処理
+    // ソート順: order昇順 → widget_id昇順（決定性）
+    autoWidgets.sort((a, b) => {
+      const orderA = a.layout?.order ?? a.widget.displayOrder ?? 999;
+      const orderB = b.layout?.order ?? b.widget.displayOrder ?? 999;
+      if (orderA !== orderB) return orderA - orderB;
+      return a.widget.widgetId.localeCompare(b.widget.widgetId);
+    });
+
+    autoWidgets.forEach(({ widget, layout }) => {
+      // w/h を決定（layoutにあれば使用、なければデフォルト）
+      let w = (layout && layout.w) ? layout.w : this.DEFAULT_W;
+      let h = (layout && layout.h) ? layout.h : this.DEFAULT_H;
+
+      // w を cols 以内に clamp
+      w = Math.min(w, cols);
+
+      // 自動配置位置を探索
+      const pos = this.findFirstFit(w, h, cols, placedRects);
+
+      if (!pos) {
+        warnings.push({
+          type: 'placement_failed',
+          message: '配置位置が見つかりません',
+          widgetId: widget.widgetId
+        });
+        return; // このウィジェットはスキップ
+      }
+
+      const rect = {
+        widgetId: widget.widgetId,
+        x: pos.x,
+        y: pos.y,
+        w: w,
+        h: h,
+        bp: bp,
+        pageId: pageId,
+        source: 'auto'
+      };
+
+      placedRects.push(rect);
+      rects.push(rect);
+    });
+
+    return { rects, warnings };
+  },
+
+  /**
+   * manual判定
+   * manual = auto === FALSE かつ x != null かつ y != null
+   * @param {Object} layout - レイアウト行
+   * @returns {boolean}
+   */
+  isManual: function(layout) {
+    if (!layout) return false;
+    return layout.auto === false &&
+           layout.x != null &&
+           layout.y != null;
+  },
+
+  /**
+   * BP別列数を取得
+   * @param {Object} page
+   * @param {string} bp
+   * @returns {number}
+   */
+  getColsForBp: function(page, bp) {
+    if (!page || !page.cols) {
+      return bp === 'PC' ? 12 : bp === 'TABLET' ? 8 : 4;
+    }
+    switch (bp) {
+      case 'PC': return page.cols.pc || 12;
+      case 'TABLET': return page.cols.tablet || 8;
+      case 'MOBILE': return page.cols.mobile || 4;
+      default: return 12;
+    }
+  },
+
+  /**
+   * 矩形を正規化（clamp等）
+   * @param {Object} rect
+   * @param {number} cols
+   * @returns {Object}
+   */
+  normalizeRect: function(rect, cols) {
+    let { x, y, w, h } = rect;
+
+    // w を cols 以内に clamp
+    w = Math.min(w, cols);
+
+    // x が 1 未満なら 1 に
+    x = Math.max(1, x);
+
+    // y が 1 未満なら 1 に
+    y = Math.max(1, y);
+
+    // x + w - 1 > cols の場合：x を調整
+    if (x + w - 1 > cols) {
+      x = cols - w + 1;
+    }
+
+    return { ...rect, x, y, w, h };
+  },
+
+  /**
+   * 最初に収まる位置を探索（決定的：上→下、左→右）
+   * @param {number} w - 幅
+   * @param {number} h - 高さ
+   * @param {number} cols - 列数
+   * @param {Array} placedRects - 配置済み矩形
+   * @returns {Object|null} { x, y } or null
+   */
+  findFirstFit: function(w, h, cols, placedRects) {
+    // y = 1 から増加
+    for (let y = 1; y <= this.MAX_Y_SEARCH; y++) {
+      // x = 1 から増加
+      for (let x = 1; x <= cols - w + 1; x++) {
+        const candidate = { x, y, w, h };
+
+        // この位置に置けるか判定
+        if (!this.collidesWithAny(candidate, placedRects)) {
+          return { x, y };
+        }
+      }
+    }
+
+    // 見つからない（通常ありえない）
+    return null;
+  },
+
+  /**
+   * 矩形が既存矩形と衝突するか判定
+   * @param {Object} rect - { x, y, w, h }
+   * @param {Array} placedRects
+   * @returns {boolean}
+   */
+  collidesWithAny: function(rect, placedRects) {
+    for (const placed of placedRects) {
+      if (this.collides(rect, placed)) {
+        return true;
+      }
+    }
+    return false;
+  },
+
+  /**
+   * 最初に衝突する矩形を返す
+   * @param {Object} rect
+   * @param {Array} placedRects
+   * @returns {Object|null}
+   */
+  findCollision: function(rect, placedRects) {
+    for (const placed of placedRects) {
+      if (this.collides(rect, placed)) {
+        return placed;
+      }
+    }
+    return null;
+  },
+
+  /**
+   * 2つの矩形が衝突するか判定（AABB）
+   * 衝突しない条件:
+   * - A.right < B.left
+   * - A.left > B.right
+   * - A.bottom < B.top
+   * - A.top > B.bottom
+   *
+   * @param {Object} a - { x, y, w, h }
+   * @param {Object} b - { x, y, w, h }
+   * @returns {boolean}
+   */
+  collides: function(a, b) {
+    const aLeft = a.x;
+    const aRight = a.x + a.w - 1;
+    const aTop = a.y;
+    const aBottom = a.y + a.h - 1;
+
+    const bLeft = b.x;
+    const bRight = b.x + b.w - 1;
+    const bTop = b.y;
+    const bBottom = b.y + b.h - 1;
+
+    // 衝突しない条件のいずれかが真なら衝突しない
+    if (aRight < bLeft) return false;
+    if (aLeft > bRight) return false;
+    if (aBottom < bTop) return false;
+    if (aTop > bBottom) return false;
+
+    // それ以外は衝突
+    return true;
+  },
+
+  /**
+   * レイアウト結果をCSS Grid用のスタイル文字列に変換
+   * @param {Object} rect - { x, y, w, h }
+   * @returns {string}
+   */
+  toGridStyle: function(rect) {
+    return `grid-column: ${rect.x} / span ${rect.w}; grid-row: ${rect.y} / span ${rect.h};`;
+  },
+
+  /**
+   * デバッグ用：配置結果をログ出力
+   * @param {Object} result - { rects, warnings }
+   */
+  logResult: function(result) {
+    console.log('=== LayoutEngine Result ===');
+    console.log('Rects:', result.rects.length);
+    result.rects.forEach(r => {
+      console.log(`  ${r.widgetId}: (${r.x},${r.y}) ${r.w}x${r.h} [${r.source}]`);
+    });
+    if (result.warnings.length > 0) {
+      console.warn('Warnings:', result.warnings);
+    }
+  }
+};
+</script>

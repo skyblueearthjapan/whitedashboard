@@ -631,8 +631,9 @@
     <div class="debug-grid" id="debug-grid"></div>
   </div>
 
-  <!-- ウィジェットモジュール読み込み -->
+  <!-- ライブラリ・ウィジェットモジュール読み込み -->
   <?!= include('lib/ref-resolver'); ?>
+  <?!= include('lib/layout-engine'); ?>
   <?!= include('widgets/renderer'); ?>
   <?!= include('widgets/link'); ?>
   <?!= include('widgets/embed'); ?>
@@ -649,7 +650,8 @@
       config: <?!= configJson ?>,
       state: {
         currentPageId: '<?= pageId ?>',
-        currentBp: 'PC'
+        currentBp: 'PC',
+        layoutResult: null  // LayoutEngine計算結果
       },
       breakpoints: ['PC', 'TABLET', 'MOBILE']
     };
@@ -747,23 +749,78 @@
       canvas.style.setProperty('--canvas-gap', gap + 'px');
       canvas.style.setProperty('--row-height', rowHeight + 'px');
 
+      // LayoutEngineで配置計算
+      const layoutResult = LayoutEngine.computeLayout(
+        App.state.currentPageId,
+        App.state.currentBp,
+        App.config
+      );
+      App.state.layoutResult = layoutResult;
+
+      // デバッグ出力
+      LayoutEngine.logResult(layoutResult);
+
+      // warnings があればコンソールに出力
+      if (layoutResult.warnings.length > 0) {
+        console.warn('Layout warnings:', layoutResult.warnings);
+      }
+
+      // rectをwidgetId→rectのマップに変換
+      const rectMap = {};
+      layoutResult.rects.forEach(r => {
+        rectMap[r.widgetId] = r;
+      });
+
       let html = '';
       html += renderCanvasHeader(page);
-      html += '<div class="canvas-grid" id="canvas-grid" style="grid-template-columns: repeat(' + cols + ', 1fr);">';
+
+      // グリッド行数を計算（配置されたウィジェットの最大y+h）
+      let maxRow = 1;
+      layoutResult.rects.forEach(r => {
+        maxRow = Math.max(maxRow, r.y + r.h - 1);
+      });
+
+      // グリッドエリア
+      html += '<div class="canvas-grid" id="canvas-grid" style="grid-template-columns: repeat(' + cols + ', 1fr); grid-auto-rows: ' + rowHeight + 'px;">';
 
       const widgets = getWidgetsForPage(page.pageId);
 
       if (widgets.length === 0) {
         html += '<div class="empty-state" style="grid-column: 1 / -1;">このページにウィジェットはありません</div>';
       } else {
-        // WidgetRenderer を使用して type 別描画
-        widgets.forEach(widget => {
-          html += WidgetRenderer.render(widget, App.config);
+        // rectMapの順序で描画（配置順を維持）
+        layoutResult.rects.forEach(rect => {
+          const widget = App.config.widgets.find(w => w.widgetId === rect.widgetId);
+          if (widget) {
+            html += renderWidgetWithLayout(widget, rect);
+          }
         });
       }
 
       html += '</div>';
       canvas.innerHTML = html;
+    }
+
+    /**
+     * ウィジェットをレイアウト情報付きで描画
+     * @param {Object} widget
+     * @param {Object} rect - { x, y, w, h, source }
+     * @returns {string}
+     */
+    function renderWidgetWithLayout(widget, rect) {
+      // WidgetRendererでHTMLを生成
+      let widgetHtml = WidgetRenderer.render(widget, App.config);
+
+      // grid-column, grid-row を追加
+      const gridStyle = `grid-column: ${rect.x} / span ${rect.w}; grid-row: ${rect.y} / span ${rect.h};`;
+
+      // data-layout-source 属性を追加（デバッグ用）
+      widgetHtml = widgetHtml.replace(
+        /class="widget-card/,
+        `style="${gridStyle}" data-layout-source="${rect.source}" class="widget-card`
+      );
+
+      return widgetHtml;
     }
 
     /* ========================================
@@ -795,6 +852,7 @@
 
       const cols = getColsForBp(page, App.state.currentBp);
       const widgets = getWidgetsForPage(page.pageId);
+      const layoutResult = App.state.layoutResult;
 
       // ウィジェットのtype別カウント
       const typeCounts = {};
@@ -802,6 +860,16 @@
         typeCounts[w.type] = (typeCounts[w.type] || 0) + 1;
       });
       const typeCountStr = Object.entries(typeCounts).map(([k, v]) => `${k}:${v}`).join(', ') || 'なし';
+
+      // レイアウトのmanual/autoカウント
+      let manualCount = 0;
+      let autoCount = 0;
+      if (layoutResult && layoutResult.rects) {
+        layoutResult.rects.forEach(r => {
+          if (r.source === 'manual') manualCount++;
+          else autoCount++;
+        });
+      }
 
       const items = [
         { label: '現在のページ', value: page.pageId },
@@ -811,7 +879,9 @@
         { label: '余白', value: (page.gap || 12) + 'px' },
         { label: '背景色', value: page.bgColor || '#FFFFFF' },
         { label: 'ウィジェット数', value: widgets.length + '件' },
-        { label: 'type別', value: typeCountStr }
+        { label: 'type別', value: typeCountStr },
+        { label: '配置', value: `manual:${manualCount}, auto:${autoCount}` },
+        { label: '警告', value: layoutResult ? layoutResult.warnings.length + '件' : '-' }
       ];
 
       grid.innerHTML = items.map(item => `
