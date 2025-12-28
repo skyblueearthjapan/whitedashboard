@@ -13,7 +13,7 @@
 | Phase 4 | 埋め込み詳細（AppSheet/GAS/自作Web） | 完了 | [phase4-embed-specification.md](./phase4-embed-specification.md) |
 | Phase 5 | 権限・監査・運用仕様 | 完了 | [phase5-permission-audit-operation.md](./phase5-permission-audit-operation.md) |
 | Phase 6 | 実装方針（技術スタック・システム構成） | 完了 | [phase6-implementation-design.md](./phase6-implementation-design.md) |
-| Phase 7 | MVP定義と拡張ロードマップ | 未着手 | - |
+| Phase 7 | MVP定義と拡張ロードマップ | 完了 | [phase7-mvp-roadmap.md](./phase7-mvp-roadmap.md) |
 | Phase 8 | TBD | 未着手 | - |
 | Phase 9 | TBD | 未着手 | - |
 | Phase 10 | TBD | 未着手 | - |
