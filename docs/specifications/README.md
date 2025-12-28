@@ -7,7 +7,7 @@
 | Phase | タイトル | 状態 | ドキュメント |
 |-------|---------|------|-------------|
 | Phase 0 | 前提・用語・ゴール定義 | 完了 | [phase0-goals-and-definitions.md](./phase0-goals-and-definitions.md) |
-| Phase 1 | データ仕様（Spreadsheet = DB） | 未着手 | - |
+| Phase 1 | データ仕様（Spreadsheet = DB） | 完了 | [phase1-data-specification.md](./phase1-data-specification.md) |
 | Phase 2 | UI/UX仕様（閲覧・編集体験） | 未着手 | - |
 | Phase 3 | TBD | 未着手 | - |
 | Phase 4 | TBD | 未着手 | - |
