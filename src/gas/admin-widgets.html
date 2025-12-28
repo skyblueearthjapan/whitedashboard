@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ウィジェット管理 - ポータルダッシュボード</title>
+  <style>
+    /* ========================================
+       リセット・ベース
+    ======================================== */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background-color: #f5f5f5;
+      color: #333;
+      line-height: 1.6;
+    }
+
+    a {
+      color: #1a73e8;
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    /* ========================================
+       ヘッダー
+    ======================================== */
+    .header {
+      background-color: #333;
+      color: white;
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .header h1 {
+      font-size: 18px;
+      font-weight: 500;
+    }
+
+    .header-nav {
+      display: flex;
+      gap: 16px;
+    }
+
+    .header-nav a {
+      color: white;
+      opacity: 0.9;
+      font-size: 13px;
+    }
+
+    .header-nav a:hover {
+      opacity: 1;
+      text-decoration: none;
+    }
+
+    /* ========================================
+       メインレイアウト
+    ======================================== */
+    .main {
+      display: flex;
+      height: calc(100vh - 49px);
+    }
+
+    .list-panel {
+      width: 60%;
+      border-right: 1px solid #e0e0e0;
+      background: white;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .detail-panel {
+      width: 40%;
+      background: #fafafa;
+      overflow-y: auto;
+    }
+
+    /* ========================================
+       ツールバー
+    ======================================== */
+    .toolbar {
+      padding: 12px 16px;
+      border-bottom: 1px solid #e0e0e0;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .search-box {
+      flex: 1;
+      min-width: 200px;
+    }
+
+    .search-box input {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+
+    .filter-group {
+      display: flex;
+      gap: 8px;
+    }
+
+    .filter-group select {
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 13px;
+      background: white;
+    }
+
+    .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: #1a73e8;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #1557b0;
+    }
+
+    .btn-success {
+      background: #34a853;
+      color: white;
+    }
+
+    .btn-success:hover {
+      background: #2d9249;
+    }
+
+    .btn-danger {
+      background: #c5221f;
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: #a31b19;
+    }
+
+    .btn-secondary {
+      background: #f5f5f5;
+      color: #333;
+      border: 1px solid #ddd;
+    }
+
+    .btn-secondary:hover {
+      background: #e8e8e8;
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* ========================================
+       テーブル
+    ======================================== */
+    .table-container {
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    thead {
+      position: sticky;
+      top: 0;
+      background: #f5f5f5;
+      z-index: 1;
+    }
+
+    th, td {
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    th {
+      font-weight: 500;
+      color: #666;
+    }
+
+    tbody tr {
+      cursor: pointer;
+    }
+
+    tbody tr:hover {
+      background: #f5f5f5;
+    }
+
+    tbody tr.selected {
+      background: #e8f0fe;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .badge-visible {
+      background: #e6f4ea;
+      color: #137333;
+    }
+
+    .badge-hidden {
+      background: #fce8e6;
+      color: #c5221f;
+    }
+
+    .badge-type {
+      background: #e8f0fe;
+      color: #1a73e8;
+    }
+
+    /* ========================================
+       詳細パネル
+    ======================================== */
+    .detail-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid #e0e0e0;
+      background: white;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .detail-header h2 {
+      font-size: 16px;
+      font-weight: 500;
+    }
+
+    .detail-body {
+      padding: 20px;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      color: #666;
+      margin-bottom: 4px;
+    }
+
+    .form-group label.required::after {
+      content: '*';
+      color: #c5221f;
+      margin-left: 2px;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+      outline: none;
+      border-color: #1a73e8;
+    }
+
+    .form-group input:disabled,
+    .form-group select:disabled {
+      background: #f5f5f5;
+      color: #999;
+    }
+
+    .form-group textarea {
+      min-height: 80px;
+      resize: vertical;
+    }
+
+    .form-group .hint {
+      font-size: 11px;
+      color: #999;
+      margin-top: 4px;
+    }
+
+    .form-group .error {
+      font-size: 11px;
+      color: #c5221f;
+      margin-top: 4px;
+    }
+
+    .form-row {
+      display: flex;
+      gap: 16px;
+    }
+
+    .form-row .form-group {
+      flex: 1;
+    }
+
+    .detail-actions {
+      padding: 16px 20px;
+      border-top: 1px solid #e0e0e0;
+      background: white;
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+    }
+
+    /* ========================================
+       空状態
+    ======================================== */
+    .empty-state {
+      padding: 60px 20px;
+      text-align: center;
+      color: #999;
+    }
+
+    .empty-state .icon {
+      font-size: 48px;
+      margin-bottom: 12px;
+    }
+
+    /* ========================================
+       トースト
+    ======================================== */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 12px 24px;
+      background: #333;
+      color: white;
+      border-radius: 6px;
+      font-size: 13px;
+      z-index: 1000;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      animation: toast-in 0.3s ease;
+    }
+
+    .toast-success {
+      background: #34a853;
+    }
+
+    .toast-error {
+      background: #c5221f;
+    }
+
+    @keyframes toast-in {
+      from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+      }
+    }
+
+    /* ========================================
+       ローディング
+    ======================================== */
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(255,255,255,0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .loading-spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid #e0e0e0;
+      border-top-color: #1a73e8;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <!-- ヘッダー -->
+  <header class="header">
+    <h1>ウィジェット管理</h1>
+    <nav class="header-nav">
+      <a href="?view=admin">管理トップ</a>
+      <a href="?view=portal">ポータルへ戻る</a>
+    </nav>
+  </header>
+
+  <!-- メイン -->
+  <main class="main">
+    <!-- 一覧パネル -->
+    <div class="list-panel">
+      <div class="toolbar">
+        <div class="search-box">
+          <input type="text" id="search-input" placeholder="ID またはタイトルで検索...">
+        </div>
+        <div class="filter-group">
+          <select id="filter-type">
+            <option value="">全種別</option>
+            <option value="link">link</option>
+            <option value="embed">embed</option>
+            <option value="image">image</option>
+            <option value="pdf">pdf</option>
+            <option value="sheet">sheet</option>
+            <option value="html">html</option>
+            <option value="divider">divider</option>
+          </select>
+          <select id="filter-visible">
+            <option value="">全表示状態</option>
+            <option value="true">表示のみ</option>
+            <option value="false">非表示のみ</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" onclick="WidgetAdmin.newWidget()">+ 新規作成</button>
+      </div>
+      <div class="table-container" id="table-container">
+        <div class="empty-state">
+          <div class="icon">...</div>
+          <p>読み込み中</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 詳細パネル -->
+    <div class="detail-panel" id="detail-panel">
+      <div class="empty-state">
+        <div class="icon">📋</div>
+        <p>左のリストからウィジェットを選択<br>または「新規作成」をクリック</p>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    /* ========================================
+       アプリケーション状態
+    ======================================== */
+    const WidgetAdmin = {
+      config: <?!= configJson ?>,
+      widgets: [],
+      filteredWidgets: [],
+      selectedWidgetId: null,
+      isNew: false,
+
+      /* ========================================
+         初期化
+      ======================================== */
+      init: function() {
+        console.log('WidgetAdmin initialized');
+
+        // ウィジェット一覧をconfigから取得
+        this.widgets = this.config.widgets || [];
+        this.filteredWidgets = [...this.widgets];
+
+        // イベント設定
+        document.getElementById('search-input').addEventListener('input', () => this.applyFilters());
+        document.getElementById('filter-type').addEventListener('change', () => this.applyFilters());
+        document.getElementById('filter-visible').addEventListener('change', () => this.applyFilters());
+
+        // 一覧描画
+        this.renderTable();
+      },
+
+      /* ========================================
+         フィルタ適用
+      ======================================== */
+      applyFilters: function() {
+        const search = document.getElementById('search-input').value.toLowerCase();
+        const typeFilter = document.getElementById('filter-type').value;
+        const visibleFilter = document.getElementById('filter-visible').value;
+
+        this.filteredWidgets = this.widgets.filter(w => {
+          // 検索
+          if (search) {
+            const matchId = w.widgetId.toLowerCase().includes(search);
+            const matchTitle = w.title.toLowerCase().includes(search);
+            if (!matchId && !matchTitle) return false;
+          }
+
+          // 種別フィルタ
+          if (typeFilter && w.type !== typeFilter) return false;
+
+          // 表示フィルタ
+          if (visibleFilter === 'true' && !w.visible) return false;
+          if (visibleFilter === 'false' && w.visible) return false;
+
+          return true;
+        });
+
+        this.renderTable();
+      },
+
+      /* ========================================
+         テーブル描画
+      ======================================== */
+      renderTable: function() {
+        const container = document.getElementById('table-container');
+
+        if (this.filteredWidgets.length === 0) {
+          container.innerHTML = `
+            <div class="empty-state">
+              <div class="icon">📭</div>
+              <p>ウィジェットがありません</p>
+            </div>
+          `;
+          return;
+        }
+
+        let html = `
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>タイトル</th>
+                <th>種別</th>
+                <th>ページ</th>
+                <th>表示</th>
+                <th>管理者</th>
+              </tr>
+            </thead>
+            <tbody>
+        `;
+
+        this.filteredWidgets.forEach(w => {
+          const selectedClass = w.widgetId === this.selectedWidgetId ? ' selected' : '';
+          const visibleBadge = w.visible
+            ? '<span class="badge badge-visible">表示</span>'
+            : '<span class="badge badge-hidden">非表示</span>';
+
+          html += `
+            <tr class="${selectedClass}" onclick="WidgetAdmin.selectWidget('${this.escapeHtml(w.widgetId)}')">
+              <td>${this.escapeHtml(w.widgetId)}</td>
+              <td>${this.escapeHtml(w.title)}</td>
+              <td><span class="badge badge-type">${this.escapeHtml(w.type)}</span></td>
+              <td>${this.escapeHtml(w.defaultPage)}</td>
+              <td>${visibleBadge}</td>
+              <td>${this.escapeHtml(w.owner || '-')}</td>
+            </tr>
+          `;
+        });
+
+        html += '</tbody></table>';
+        container.innerHTML = html;
+      },
+
+      /* ========================================
+         ウィジェット選択
+      ======================================== */
+      selectWidget: function(widgetId) {
+        this.selectedWidgetId = widgetId;
+        this.isNew = false;
+        this.renderTable();
+        this.renderDetailForm();
+      },
+
+      /* ========================================
+         新規作成
+      ======================================== */
+      newWidget: function() {
+        this.selectedWidgetId = null;
+        this.isNew = true;
+        this.renderDetailForm();
+      },
+
+      /* ========================================
+         詳細フォーム描画
+      ======================================== */
+      renderDetailForm: function() {
+        const panel = document.getElementById('detail-panel');
+        const widget = this.isNew
+          ? { widgetId: '', title: '', type: 'link', defaultPage: 'home', visible: true, urlOrRef: '', openMode: 'new_tab', embedMode: 'link_fallback', owner: '', reviewCycle: 'none', iconAssetId: '', audience: 'all' }
+          : this.widgets.find(w => w.widgetId === this.selectedWidgetId);
+
+        if (!widget) {
+          panel.innerHTML = '<div class="empty-state"><div class="icon">⚠️</div><p>ウィジェットが見つかりません</p></div>';
+          return;
+        }
+
+        const title = this.isNew ? '新規ウィジェット' : 'ウィジェット編集';
+        const idDisabled = this.isNew ? '' : 'disabled';
+
+        // ページ選択肢
+        let pageOptions = '';
+        (this.config.pages || []).forEach(p => {
+          const selected = p.pageId === widget.defaultPage ? ' selected' : '';
+          pageOptions += `<option value="${this.escapeHtml(p.pageId)}"${selected}>${this.escapeHtml(p.pageTitle)}</option>`;
+        });
+
+        panel.innerHTML = `
+          <div class="detail-header">
+            <h2>${title}</h2>
+            <button class="btn btn-secondary" onclick="WidgetAdmin.closeDetail()">×</button>
+          </div>
+          <div class="detail-body">
+            <div class="form-row">
+              <div class="form-group">
+                <label class="required">ウィジェットID</label>
+                <input type="text" id="form-widget-id" value="${this.escapeHtml(widget.widgetId)}" ${idDisabled}>
+                <div class="hint">英数字・_・- 推奨</div>
+              </div>
+              <div class="form-group">
+                <label class="required">種別</label>
+                <select id="form-type">
+                  <option value="link"${widget.type === 'link' ? ' selected' : ''}>link</option>
+                  <option value="embed"${widget.type === 'embed' ? ' selected' : ''}>embed</option>
+                  <option value="image"${widget.type === 'image' ? ' selected' : ''}>image</option>
+                  <option value="pdf"${widget.type === 'pdf' ? ' selected' : ''}>pdf</option>
+                  <option value="sheet"${widget.type === 'sheet' ? ' selected' : ''}>sheet</option>
+                  <option value="html"${widget.type === 'html' ? ' selected' : ''}>html</option>
+                  <option value="divider"${widget.type === 'divider' ? ' selected' : ''}>divider</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="required">タイトル</label>
+              <input type="text" id="form-title" value="${this.escapeHtml(widget.title)}">
+            </div>
+
+            <div class="form-group">
+              <label>URL / 参照</label>
+              <input type="text" id="form-url-or-ref" value="${this.escapeHtml(widget.urlOrRef || '')}">
+              <div class="hint">外部URL または REF:HTML_xxx / REF:ASSET_xxx</div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>既定ページ</label>
+                <select id="form-default-page">${pageOptions}</select>
+              </div>
+              <div class="form-group">
+                <label>対象</label>
+                <select id="form-audience">
+                  <option value="all"${widget.audience === 'all' ? ' selected' : ''}>全員</option>
+                  <option value="internal"${widget.audience === 'internal' ? ' selected' : ''}>社内のみ</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>開き方</label>
+                <select id="form-open-mode">
+                  <option value="same_tab"${widget.openMode === 'same_tab' ? ' selected' : ''}>同じタブ</option>
+                  <option value="new_tab"${widget.openMode === 'new_tab' ? ' selected' : ''}>新しいタブ</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>埋め込み方式</label>
+                <select id="form-embed-mode">
+                  <option value="iframe"${widget.embedMode === 'iframe' ? ' selected' : ''}>iframe</option>
+                  <option value="link_fallback"${widget.embedMode === 'link_fallback' ? ' selected' : ''}>link_fallback</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>アイコンアセットID</label>
+                <input type="text" id="form-icon-asset-id" value="${this.escapeHtml(widget.iconAssetId || '')}">
+              </div>
+              <div class="form-group">
+                <label>表示</label>
+                <select id="form-visible">
+                  <option value="true"${widget.visible ? ' selected' : ''}>表示</option>
+                  <option value="false"${!widget.visible ? ' selected' : ''}>非表示</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>管理者</label>
+                <input type="text" id="form-owner" value="${this.escapeHtml(widget.owner || '')}">
+              </div>
+              <div class="form-group">
+                <label>棚卸周期</label>
+                <select id="form-review-cycle">
+                  <option value="none"${widget.reviewCycle === 'none' ? ' selected' : ''}>なし</option>
+                  <option value="weekly"${widget.reviewCycle === 'weekly' ? ' selected' : ''}>週次</option>
+                  <option value="monthly"${widget.reviewCycle === 'monthly' ? ' selected' : ''}>月次</option>
+                  <option value="quarterly"${widget.reviewCycle === 'quarterly' ? ' selected' : ''}>四半期</option>
+                  <option value="yearly"${widget.reviewCycle === 'yearly' ? ' selected' : ''}>年次</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="detail-actions">
+            ${!this.isNew && widget.visible ? '<button class="btn btn-danger" onclick="WidgetAdmin.hideWidget()">非表示にする</button>' : ''}
+            ${!this.isNew && !widget.visible ? '<button class="btn btn-secondary" onclick="WidgetAdmin.showWidget()">表示に戻す</button>' : ''}
+            <button class="btn btn-success" onclick="WidgetAdmin.saveWidget()">${this.isNew ? '作成' : '保存'}</button>
+          </div>
+        `;
+      },
+
+      /* ========================================
+         詳細パネルを閉じる
+      ======================================== */
+      closeDetail: function() {
+        this.selectedWidgetId = null;
+        this.isNew = false;
+        this.renderTable();
+        document.getElementById('detail-panel').innerHTML = `
+          <div class="empty-state">
+            <div class="icon">📋</div>
+            <p>左のリストからウィジェットを選択<br>または「新規作成」をクリック</p>
+          </div>
+        `;
+      },
+
+      /* ========================================
+         フォームデータ取得
+      ======================================== */
+      getFormData: function() {
+        return {
+          widget_id: document.getElementById('form-widget-id').value.trim(),
+          title: document.getElementById('form-title').value.trim(),
+          type: document.getElementById('form-type').value,
+          default_page: document.getElementById('form-default-page').value,
+          audience: document.getElementById('form-audience').value,
+          url_or_ref: document.getElementById('form-url-or-ref').value.trim(),
+          icon_asset_id: document.getElementById('form-icon-asset-id').value.trim(),
+          open_mode: document.getElementById('form-open-mode').value,
+          embed_mode: document.getElementById('form-embed-mode').value,
+          visible: document.getElementById('form-visible').value === 'true',
+          owner: document.getElementById('form-owner').value.trim(),
+          review_cycle: document.getElementById('form-review-cycle').value
+        };
+      },
+
+      /* ========================================
+         クライアント側バリデーション
+      ======================================== */
+      validateForm: function(data) {
+        if (!data.widget_id) {
+          return { valid: false, message: 'ウィジェットIDは必須です' };
+        }
+        if (!data.title) {
+          return { valid: false, message: 'タイトルは必須です' };
+        }
+        if (!data.type) {
+          return { valid: false, message: '種別は必須です' };
+        }
+
+        // URL必須チェック
+        const typesRequiringUrl = ['link', 'embed', 'image', 'pdf', 'sheet'];
+        if (typesRequiringUrl.includes(data.type) && !data.url_or_ref) {
+          return { valid: false, message: '種別 "' + data.type + '" にはURL/参照が必須です' };
+        }
+
+        // ID重複チェック（新規作成時のみ）
+        if (this.isNew) {
+          const existing = this.widgets.find(w => w.widgetId === data.widget_id);
+          if (existing) {
+            return { valid: false, message: 'ウィジェットID "' + data.widget_id + '" は既に存在します' };
+          }
+        }
+
+        return { valid: true, message: '' };
+      },
+
+      /* ========================================
+         保存
+      ======================================== */
+      saveWidget: function() {
+        const data = this.getFormData();
+
+        // バリデーション
+        const validation = this.validateForm(data);
+        if (!validation.valid) {
+          this.showToast(validation.message, 'error');
+          return;
+        }
+
+        // ローディング表示
+        this.showLoading();
+
+        if (this.isNew) {
+          // 新規作成
+          google.script.run
+            .withSuccessHandler(this.onSaveSuccess.bind(this))
+            .withFailureHandler(this.onSaveError.bind(this))
+            .createWidget(data);
+        } else {
+          // 更新
+          google.script.run
+            .withSuccessHandler(this.onSaveSuccess.bind(this))
+            .withFailureHandler(this.onSaveError.bind(this))
+            .updateWidget(this.selectedWidgetId, data);
+        }
+      },
+
+      /* ========================================
+         非表示
+      ======================================== */
+      hideWidget: function() {
+        if (!confirm('このウィジェットを非表示にしますか？\nポータルから見えなくなりますが、データは残ります。')) {
+          return;
+        }
+
+        this.showLoading();
+
+        google.script.run
+          .withSuccessHandler(this.onSaveSuccess.bind(this))
+          .withFailureHandler(this.onSaveError.bind(this))
+          .hideWidget(this.selectedWidgetId);
+      },
+
+      /* ========================================
+         表示に戻す
+      ======================================== */
+      showWidget: function() {
+        this.showLoading();
+
+        google.script.run
+          .withSuccessHandler(this.onSaveSuccess.bind(this))
+          .withFailureHandler(this.onSaveError.bind(this))
+          .showWidget(this.selectedWidgetId);
+      },
+
+      /* ========================================
+         保存成功
+      ======================================== */
+      onSaveSuccess: function(result) {
+        this.hideLoading();
+
+        if (result.ok) {
+          this.showToast('保存しました', 'success');
+          // データを再取得
+          this.reloadData();
+        } else {
+          this.showToast(result.error || '保存に失敗しました', 'error');
+        }
+      },
+
+      /* ========================================
+         保存エラー
+      ======================================== */
+      onSaveError: function(error) {
+        this.hideLoading();
+        this.showToast('エラー: ' + error.message, 'error');
+      },
+
+      /* ========================================
+         データ再取得
+      ======================================== */
+      reloadData: function() {
+        google.script.run
+          .withSuccessHandler((result) => {
+            if (result.ok) {
+              this.widgets = result.widgets.map(w => ({
+                widgetId: w.widgetId,
+                title: w.title,
+                type: w.type,
+                defaultPage: w.defaultPage,
+                audience: w.audience,
+                urlOrRef: w.urlOrRef,
+                iconAssetId: w.iconAssetId,
+                openMode: w.openMode,
+                embedMode: w.embedMode,
+                visible: w.visible,
+                owner: w.owner,
+                reviewCycle: w.reviewCycle
+              }));
+              this.applyFilters();
+
+              // 選択状態を維持
+              if (this.selectedWidgetId) {
+                this.renderDetailForm();
+              } else {
+                this.closeDetail();
+              }
+            }
+          })
+          .withFailureHandler((error) => {
+            console.error('Reload error:', error);
+          })
+          .listWidgets();
+      },
+
+      /* ========================================
+         ローディング
+      ======================================== */
+      showLoading: function() {
+        const overlay = document.createElement('div');
+        overlay.className = 'loading-overlay';
+        overlay.id = 'loading-overlay';
+        overlay.innerHTML = '<div class="loading-spinner"></div>';
+        document.body.appendChild(overlay);
+      },
+
+      hideLoading: function() {
+        const overlay = document.getElementById('loading-overlay');
+        if (overlay) overlay.remove();
+      },
+
+      /* ========================================
+         トースト
+      ======================================== */
+      showToast: function(message, type) {
+        const existing = document.querySelector('.toast');
+        if (existing) existing.remove();
+
+        const toast = document.createElement('div');
+        toast.className = 'toast toast-' + (type || 'info');
+        toast.textContent = message;
+        document.body.appendChild(toast);
+
+        setTimeout(() => toast.remove(), 3000);
+      },
+
+      /* ========================================
+         ヘルパー
+      ======================================== */
+      escapeHtml: function(str) {
+        if (!str) return '';
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;');
+      }
+    };
+
+    /* ========================================
+       初期化実行
+    ======================================== */
+    document.addEventListener('DOMContentLoaded', () => WidgetAdmin.init());
+  </script>
+</body>
+</html>
