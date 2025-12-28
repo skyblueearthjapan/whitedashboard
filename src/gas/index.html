@@ -599,6 +599,40 @@
       background: #fce8e6;
     }
 
+    /* 保存ボタン */
+    .save-layout-btn {
+      padding: 6px 14px;
+      border: 1px solid #34a853;
+      background: #34a853;
+      color: white;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: all 0.2s;
+      display: none;
+    }
+
+    .edit-mode .save-layout-btn {
+      display: inline-block;
+    }
+
+    .save-layout-btn:hover {
+      background: #2d9249;
+      border-color: #2d9249;
+    }
+
+    .save-layout-btn:disabled {
+      background: #9e9e9e;
+      border-color: #9e9e9e;
+      cursor: not-allowed;
+    }
+
+    .save-layout-btn.saving {
+      background: #ff9800;
+      border-color: #ff9800;
+    }
+
     .unsaved-badge {
       display: none;
       padding: 2px 8px;
@@ -799,6 +833,7 @@
     <div style="display: flex; align-items: center; gap: 16px;">
       <div class="edit-mode-controls" id="edit-mode-controls" style="display: none;">
         <button class="edit-mode-toggle" id="edit-mode-toggle" onclick="Editor.toggleEditMode()">編集モード</button>
+        <button class="save-layout-btn" id="save-layout-btn" onclick="Editor.save()">保存</button>
         <button class="edit-mode-reset" id="edit-mode-reset" onclick="Editor.resetChanges()">リセット</button>
         <span class="unsaved-badge" id="unsaved-badge">未保存</span>
       </div>

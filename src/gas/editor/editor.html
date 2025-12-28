@@ -678,7 +678,7 @@ const Editor = {
   },
 
   /**
-   * 保存用のデータを取得（指示Fで使用）
+   * 保存用のデータを取得
    */
   getSaveData: function() {
     const bp = App.state.currentBp;
@@ -687,6 +687,138 @@ const Editor = {
       bp: bp,
       rects: this.state.draftRects[bp] || []
     };
+  },
+
+  /**
+   * 保存処理
+   * google.script.run でサーバ側 saveLayout を呼び出し
+   */
+  save: function() {
+    if (!this.state.isEditMode) {
+      this.showToast('編集モードではありません', 'error');
+      return;
+    }
+
+    if (!this.state.hasUnsavedChanges) {
+      this.showToast('変更がありません', 'info');
+      return;
+    }
+
+    const bp = App.state.currentBp;
+    const rects = this.state.draftRects[bp];
+
+    if (!rects || rects.length === 0) {
+      this.showToast('保存するデータがありません', 'error');
+      return;
+    }
+
+    // ペイロード作成
+    const payload = {
+      page_id: App.state.currentPageId,
+      bp: bp,
+      rects: rects.map(r => ({
+        widget_id: r.widgetId,
+        x: r.x,
+        y: r.y,
+        w: r.w,
+        h: r.h,
+        source: r.source || 'manual',
+        pinned: r.pinned,
+        z_index: r.zIndex
+      })),
+      client_ts: new Date().toISOString()
+    };
+
+    // UI状態を「保存中」に
+    this.setSaveButtonState('saving');
+    console.log('Saving layout:', payload);
+
+    // GAS呼び出し
+    google.script.run
+      .withSuccessHandler(this.onSaveSuccess.bind(this))
+      .withFailureHandler(this.onSaveError.bind(this))
+      .saveLayout(payload);
+  },
+
+  /**
+   * 保存成功時のコールバック
+   * @param {Object} result
+   */
+  onSaveSuccess: function(result) {
+    console.log('Save result:', result);
+
+    if (result.ok) {
+      this.showToast('保存しました (更新:' + result.updated + ', 追加:' + result.inserted + ')', 'success');
+
+      // 未保存フラグをクリア
+      this.state.hasUnsavedChanges = false;
+      this.updateUnsavedBadge();
+
+      // 現在BPのdraftRectsで、wasEditedフラグをクリア
+      const bp = App.state.currentBp;
+      if (this.state.draftRects[bp]) {
+        this.state.draftRects[bp].forEach(r => {
+          delete r.wasEdited;
+        });
+      }
+
+      // 再描画（編集済みマークをクリア）
+      this.renderWithDraft();
+
+    } else {
+      this.showToast('保存失敗: ' + (result.message || '不明なエラー'), 'error');
+    }
+
+    this.setSaveButtonState('default');
+  },
+
+  /**
+   * 保存失敗時のコールバック
+   * @param {Error} error
+   */
+  onSaveError: function(error) {
+    console.error('Save error:', error);
+    this.showToast('保存に失敗しました: ' + error.message, 'error');
+    this.setSaveButtonState('default');
+  },
+
+  /**
+   * 保存ボタンの状態を更新
+   * @param {string} state - 'default' | 'saving'
+   */
+  setSaveButtonState: function(state) {
+    const btn = document.getElementById('save-layout-btn');
+    if (!btn) return;
+
+    if (state === 'saving') {
+      btn.disabled = true;
+      btn.textContent = '保存中...';
+      btn.classList.add('saving');
+    } else {
+      btn.disabled = false;
+      btn.textContent = '保存';
+      btn.classList.remove('saving');
+    }
+  },
+
+  /**
+   * 全BPを一括保存
+   * 各BPのdraftRectsがあれば順次保存
+   */
+  saveAllBps: function() {
+    const bps = ['PC', 'TABLET', 'MOBILE'];
+    const toSave = bps.filter(bp => {
+      const rects = this.state.draftRects[bp];
+      return rects && rects.some(r => r.wasEdited);
+    });
+
+    if (toSave.length === 0) {
+      this.showToast('保存する変更がありません', 'info');
+      return;
+    }
+
+    // 現在のBPを保存（簡易実装：全BP保存は将来実装）
+    this.save();
   }
 };
 </script>
