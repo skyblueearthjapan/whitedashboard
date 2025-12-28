@@ -21,6 +21,11 @@
       line-height: 1.6;
     }
 
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
     /* ========================================
        ヘッダー
     ======================================== */
@@ -58,7 +63,6 @@
       gap: 8px;
     }
 
-    /* ページタブ */
     .page-tabs {
       display: flex;
       gap: 4px;
@@ -83,7 +87,6 @@
       font-weight: 500;
     }
 
-    /* BP切替ボタン */
     .bp-switcher {
       display: flex;
       gap: 4px;
@@ -119,7 +122,7 @@
     }
 
     /* ========================================
-       キャンバスコンテナ
+       キャンバス
     ======================================== */
     .canvas-container {
       padding: 24px;
@@ -127,7 +130,6 @@
       justify-content: center;
     }
 
-    /* キャンバス（グリッド） */
     .canvas {
       width: 100%;
       max-width: 1200px;
@@ -139,78 +141,415 @@
       transition: max-width 0.3s ease;
     }
 
-    /* BP別最大幅 */
-    .canvas.bp-pc {
-      max-width: 1200px;
-    }
+    .canvas.bp-pc { max-width: 1200px; }
+    .canvas.bp-tablet { max-width: 768px; }
+    .canvas.bp-mobile { max-width: 375px; }
 
-    .canvas.bp-tablet {
-      max-width: 768px;
-    }
-
-    .canvas.bp-mobile {
-      max-width: 375px;
-    }
-
-    /* ヘッダー画像 */
     .canvas-header-image {
       width: 100%;
       max-height: 180px;
       object-fit: cover;
     }
 
-    /* グリッドエリア */
     .canvas-grid {
       display: grid;
       padding: var(--canvas-gap, 12px);
       gap: var(--canvas-gap, 12px);
-      /* grid-template-columnsはJSで動的設定 */
     }
 
     /* ========================================
-       ウィジェットカード（仮配置）
+       ウィジェット共通
     ======================================== */
     .widget-card {
       background: #fafafa;
       border: 1px solid #e0e0e0;
       border-radius: 6px;
-      padding: 12px;
+      padding: 0;
       min-height: calc(var(--row-height, 72px) * 2);
       display: flex;
       flex-direction: column;
       transition: box-shadow 0.2s;
+      overflow: hidden;
     }
 
     .widget-card:hover {
       box-shadow: 0 2px 8px rgba(0,0,0,0.12);
     }
 
-    .widget-card .widget-title {
+    .widget-clickable {
+      cursor: pointer;
+    }
+
+    .widget-clickable:hover {
+      border-color: #1a73e8;
+    }
+
+    /* ウィジェットヘッダー */
+    .widget-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      background: #f5f5f5;
+      border-bottom: 1px solid #e8e8e8;
+    }
+
+    .widget-icon {
+      width: 20px;
+      height: 20px;
+      object-fit: contain;
+      flex-shrink: 0;
+    }
+
+    .widget-title {
       font-size: 13px;
       font-weight: 500;
-      margin-bottom: 6px;
       color: #333;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
-    .widget-card .widget-type {
-      font-size: 11px;
-      color: #666;
-      background: #e8e8e8;
-      padding: 2px 8px;
-      border-radius: 4px;
-      display: inline-block;
-      align-self: flex-start;
-    }
-
-    .widget-card .widget-meta {
-      font-size: 10px;
-      color: #999;
-      margin-top: auto;
-      padding-top: 8px;
+    /* ウィジェットボディ */
+    .widget-body {
+      flex: 1;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
     }
 
     /* ========================================
-       メタ情報（デバッグ）
+       ウィジェットエラー・警告
+    ======================================== */
+    .widget-error {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 8px;
+      background: #fce8e6;
+      border-radius: 4px;
+      color: #c5221f;
+      font-size: 12px;
+    }
+
+    .widget-error .error-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      background: #c5221f;
+      color: white;
+      border-radius: 50%;
+      font-size: 11px;
+      font-weight: bold;
+      flex-shrink: 0;
+    }
+
+    .widget-warning {
+      padding: 8px;
+      background: #fef7e0;
+      border-radius: 4px;
+      color: #b06000;
+      font-size: 12px;
+    }
+
+    /* ========================================
+       外部リンク
+    ======================================== */
+    .widget-external-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 12px;
+      background: #e8f0fe;
+      color: #1a73e8;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+      transition: background 0.2s;
+    }
+
+    .widget-external-link:hover {
+      background: #d2e3fc;
+    }
+
+    /* ========================================
+       Link ウィジェット
+    ======================================== */
+    .widget-link .widget-link-url {
+      font-size: 11px;
+      color: #666;
+      word-break: break-all;
+    }
+
+    .widget-link .widget-link-mode {
+      font-size: 10px;
+      color: #999;
+      margin-top: 4px;
+    }
+
+    /* ========================================
+       Embed ウィジェット
+    ======================================== */
+    .widget-embed-body {
+      padding: 0;
+    }
+
+    .widget-embed-frame-container {
+      flex: 1;
+      min-height: 200px;
+      background: #f0f0f0;
+    }
+
+    .widget-embed-iframe {
+      width: 100%;
+      height: 100%;
+      min-height: 200px;
+      border: none;
+    }
+
+    .widget-embed-fallback {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: #f5f5f5;
+      border-top: 1px solid #e0e0e0;
+    }
+
+    .widget-embed-hint {
+      font-size: 10px;
+      color: #999;
+    }
+
+    .widget-embed-link-mode .widget-embed-link-container {
+      text-align: center;
+      padding: 16px;
+    }
+
+    .widget-embed-open-btn {
+      display: inline-block;
+      padding: 10px 24px;
+      background: #1a73e8;
+      color: white;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: 500;
+      transition: background 0.2s;
+    }
+
+    .widget-embed-open-btn:hover {
+      background: #1557b0;
+    }
+
+    .widget-embed-url {
+      font-size: 11px;
+      color: #999;
+      margin-top: 8px;
+      word-break: break-all;
+    }
+
+    .widget-embed-mode-label {
+      font-size: 10px;
+      color: #999;
+      text-align: center;
+      margin-top: auto;
+    }
+
+    /* ========================================
+       Image ウィジェット
+    ======================================== */
+    .widget-image-body {
+      padding: 0;
+    }
+
+    .widget-image-container {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f5f5f5;
+      min-height: 120px;
+    }
+
+    .widget-image-img {
+      max-width: 100%;
+      max-height: 300px;
+      object-fit: contain;
+    }
+
+    .widget-image-placeholder {
+      padding: 24px;
+      color: #999;
+      font-size: 12px;
+      text-align: center;
+    }
+
+    /* ========================================
+       PDF ウィジェット
+    ======================================== */
+    .widget-pdf-container {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .widget-pdf-icon {
+      font-size: 32px;
+    }
+
+    .widget-pdf-info {
+      flex: 1;
+    }
+
+    .widget-pdf-label {
+      font-size: 12px;
+      color: #666;
+    }
+
+    .widget-pdf-url {
+      font-size: 11px;
+      color: #999;
+      word-break: break-all;
+    }
+
+    .widget-pdf-open-btn {
+      display: inline-block;
+      padding: 8px 16px;
+      background: #ea4335;
+      color: white;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+      transition: background 0.2s;
+    }
+
+    .widget-pdf-open-btn:hover {
+      background: #c5221f;
+    }
+
+    /* ========================================
+       Sheet ウィジェット
+    ======================================== */
+    .widget-sheet-container {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .widget-sheet-icon {
+      font-size: 32px;
+    }
+
+    .widget-sheet-info {
+      flex: 1;
+    }
+
+    .widget-sheet-label {
+      font-size: 12px;
+      color: #666;
+    }
+
+    .widget-sheet-url {
+      font-size: 11px;
+      color: #999;
+    }
+
+    .widget-sheet-open-btn {
+      display: inline-block;
+      padding: 8px 16px;
+      background: #34a853;
+      color: white;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+      transition: background 0.2s;
+    }
+
+    .widget-sheet-open-btn:hover {
+      background: #1e8e3e;
+    }
+
+    /* ========================================
+       HTML ウィジェット
+    ======================================== */
+    .widget-html-body {
+      padding: 0;
+    }
+
+    .widget-html-content {
+      padding: 12px;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .widget-html-content p {
+      margin-bottom: 8px;
+    }
+
+    .widget-html-content ul, .widget-html-content ol {
+      margin-left: 20px;
+      margin-bottom: 8px;
+    }
+
+    .widget-html-markdown {
+      padding: 12px;
+      font-size: 12px;
+      white-space: pre-wrap;
+      background: #f8f8f8;
+      margin: 0;
+    }
+
+    .widget-html-empty {
+      padding: 24px;
+      text-align: center;
+      color: #999;
+      font-size: 12px;
+    }
+
+    .widget-html-external {
+      padding: 0;
+    }
+
+    .widget-html-iframe {
+      width: 100%;
+      min-height: 200px;
+      border: none;
+    }
+
+    .widget-html-fallback {
+      padding: 8px 12px;
+      background: #f5f5f5;
+      border-top: 1px solid #e0e0e0;
+    }
+
+    /* ========================================
+       Divider ウィジェット
+    ======================================== */
+    .widget-divider {
+      min-height: auto;
+      padding: 8px 12px;
+      background: transparent;
+      border: none;
+    }
+
+    .divider-line {
+      border: none;
+      border-top: 1px solid #e0e0e0;
+    }
+
+    /* ========================================
+       未対応ウィジェット
+    ======================================== */
+    .widget-unsupported {
+      background: #f5f5f5;
+    }
+
+    /* ========================================
+       デバッグパネル
     ======================================== */
     .debug-panel {
       margin: 24px;
@@ -243,7 +582,7 @@
     }
 
     /* ========================================
-       ローディング・エラー
+       ローディング・エラー・空状態
     ======================================== */
     .loading {
       text-align: center;
@@ -259,9 +598,6 @@
       margin: 16px;
     }
 
-    /* ========================================
-       空状態
-    ======================================== */
     .empty-state {
       text-align: center;
       padding: 48px;
@@ -278,12 +614,8 @@
 
   <!-- ツールバー -->
   <div class="toolbar">
-    <nav class="page-tabs" id="page-tabs">
-      <!-- ページタブはJSで生成 -->
-    </nav>
-    <div class="bp-switcher" id="bp-switcher">
-      <!-- BP切替ボタンはJSで生成 -->
-    </div>
+    <nav class="page-tabs" id="page-tabs"></nav>
+    <div class="bp-switcher" id="bp-switcher"></div>
   </div>
 
   <!-- キャンバスコンテナ -->
@@ -299,21 +631,26 @@
     <div class="debug-grid" id="debug-grid"></div>
   </div>
 
+  <!-- ウィジェットモジュール読み込み -->
+  <?!= include('lib/ref-resolver'); ?>
+  <?!= include('widgets/renderer'); ?>
+  <?!= include('widgets/link'); ?>
+  <?!= include('widgets/embed'); ?>
+  <?!= include('widgets/image'); ?>
+  <?!= include('widgets/pdf'); ?>
+  <?!= include('widgets/sheet'); ?>
+  <?!= include('widgets/html-widget'); ?>
+
   <script>
     /* ========================================
        アプリケーション状態
     ======================================== */
     const App = {
-      // サーバーから渡された設定データ
       config: <?!= configJson ?>,
-
-      // 現在の状態
       state: {
         currentPageId: '<?= pageId ?>',
-        currentBp: 'PC'  // PC | TABLET | MOBILE
+        currentBp: 'PC'
       },
-
-      // ブレイクポイント定義
       breakpoints: ['PC', 'TABLET', 'MOBILE']
     };
 
@@ -328,7 +665,6 @@
         return;
       }
 
-      // 初期描画
       renderPageTabs();
       renderBpSwitcher();
       renderCanvas();
@@ -343,9 +679,7 @@
       const container = document.getElementById('page-tabs');
       container.innerHTML = '';
 
-      if (!App.config.pages || App.config.pages.length === 0) {
-        return;
-      }
+      if (!App.config.pages || App.config.pages.length === 0) return;
 
       App.config.pages.forEach(page => {
         const tab = document.createElement('div');
@@ -369,10 +703,7 @@
       App.breakpoints.forEach(bp => {
         const btn = document.createElement('button');
         btn.className = 'bp-btn' + (bp === App.state.currentBp ? ' active' : '');
-
-        // 列数を取得（01_ページから）
         const cols = getColsForBp(page, bp);
-
         btn.innerHTML = `${bp}<span class="bp-cols">(${cols}列)</span>`;
         btn.onclick = () => switchBp(bp);
         container.appendChild(btn);
@@ -384,11 +715,8 @@
     ======================================== */
     function switchBp(bp) {
       if (App.state.currentBp === bp) return;
-
       App.state.currentBp = bp;
       console.log('BP switched to:', bp);
-
-      // UIを更新
       renderBpSwitcher();
       renderCanvas();
       renderDebugPanel();
@@ -406,48 +734,35 @@
         return;
       }
 
-      // ページタイトル更新
       document.getElementById('page-title').textContent = page.pageTitle;
       document.title = page.pageTitle + ' - ポータルダッシュボード';
 
-      // キャンバスのBPクラスを更新
       canvas.className = 'canvas bp-' + App.state.currentBp.toLowerCase();
-
-      // 背景色を適用（01_ページ.背景色）
       canvas.style.backgroundColor = page.bgColor || '#FFFFFF';
 
-      // グリッド設定を取得
       const cols = getColsForBp(page, App.state.currentBp);
       const gap = page.gap || 12;
       const rowHeight = page.rowHeight || 72;
 
-      // CSS変数を設定
       canvas.style.setProperty('--canvas-gap', gap + 'px');
       canvas.style.setProperty('--row-height', rowHeight + 'px');
 
-      // キャンバス内容を構築
       let html = '';
-
-      // ヘッダー画像（04_アセット参照）
       html += renderCanvasHeader(page);
-
-      // グリッドエリア
       html += '<div class="canvas-grid" id="canvas-grid" style="grid-template-columns: repeat(' + cols + ', 1fr);">';
 
-      // ウィジェットを取得
       const widgets = getWidgetsForPage(page.pageId);
 
       if (widgets.length === 0) {
         html += '<div class="empty-state" style="grid-column: 1 / -1;">このページにウィジェットはありません</div>';
       } else {
-        // 仮配置：各ウィジェットを縦に並べる（配置計算は次の指示）
+        // WidgetRenderer を使用して type 別描画
         widgets.forEach(widget => {
-          html += renderWidgetCard(widget);
+          html += WidgetRenderer.render(widget, App.config);
         });
       }
 
       html += '</div>';
-
       canvas.innerHTML = html;
     }
 
@@ -455,45 +770,15 @@
        キャンバスヘッダー画像描画
     ======================================== */
     function renderCanvasHeader(page) {
-      // ヘッダーアセットIDが未設定の場合は何も表示しない
-      if (!page.headerAssetId) {
-        return '';
-      }
+      if (!page.headerAssetId) return '';
 
-      // 04_アセットから参照
       const asset = App.config.assets[page.headerAssetId];
-
-      // アセットが見つからない場合は何も表示しない（エラーで落とさない）
       if (!asset || !asset.url) {
         console.warn('Header asset not found:', page.headerAssetId);
         return '';
       }
 
       return '<img class="canvas-header-image" src="' + escapeHtml(asset.url) + '" alt="' + escapeHtml(asset.altText || '') + '">';
-    }
-
-    /* ========================================
-       ウィジェットカード描画
-    ======================================== */
-    function renderWidgetCard(widget) {
-      const typeLabels = {
-        link: 'リンク',
-        embed: '埋め込み',
-        image: '画像',
-        pdf: 'PDF',
-        sheet: 'シート',
-        html: 'HTML',
-        text: 'テキスト',
-        divider: '区切り'
-      };
-
-      return `
-        <div class="widget-card" data-widget-id="${escapeHtml(widget.widgetId)}">
-          <div class="widget-title">${escapeHtml(widget.title)}</div>
-          <span class="widget-type">${typeLabels[widget.type] || widget.type}</span>
-          <div class="widget-meta">ID: ${escapeHtml(widget.widgetId)}</div>
-        </div>
-      `;
     }
 
     /* ========================================
@@ -511,6 +796,13 @@
       const cols = getColsForBp(page, App.state.currentBp);
       const widgets = getWidgetsForPage(page.pageId);
 
+      // ウィジェットのtype別カウント
+      const typeCounts = {};
+      widgets.forEach(w => {
+        typeCounts[w.type] = (typeCounts[w.type] || 0) + 1;
+      });
+      const typeCountStr = Object.entries(typeCounts).map(([k, v]) => `${k}:${v}`).join(', ') || 'なし';
+
       const items = [
         { label: '現在のページ', value: page.pageId },
         { label: 'ブレイクポイント', value: App.state.currentBp },
@@ -519,7 +811,7 @@
         { label: '余白', value: (page.gap || 12) + 'px' },
         { label: '背景色', value: page.bgColor || '#FFFFFF' },
         { label: 'ウィジェット数', value: widgets.length + '件' },
-        { label: 'ヘッダーアセット', value: page.headerAssetId || 'なし' }
+        { label: 'type別', value: typeCountStr }
       ];
 
       grid.innerHTML = items.map(item => `
@@ -532,19 +824,14 @@
     /* ========================================
        ヘルパー関数
     ======================================== */
-
-    // 現在のページを取得
     function getCurrentPage() {
       return App.config.pages.find(p => p.pageId === App.state.currentPageId);
     }
 
-    // BP別列数を取得（01_ページから）
     function getColsForBp(page, bp) {
       if (!page || !page.cols) {
-        // フォールバック
         return bp === 'PC' ? 12 : bp === 'TABLET' ? 8 : 4;
       }
-
       switch (bp) {
         case 'PC': return page.cols.pc || 12;
         case 'TABLET': return page.cols.tablet || 8;
@@ -553,18 +840,15 @@
       }
     }
 
-    // ページのウィジェットを取得
     function getWidgetsForPage(pageId) {
       return App.config.widgets.filter(w => w.defaultPage === pageId && w.visible);
     }
 
-    // ページ遷移
     function navigateToPage(pageId) {
       const url = window.location.href.split('?')[0] + '?page=' + encodeURIComponent(pageId);
       window.location.href = url;
     }
 
-    // ヘッダーメタを更新
     function updateHeaderMeta() {
       const meta = document.getElementById('header-meta');
       if (App.config.meta && App.config.meta.loadedAt) {
@@ -573,13 +857,11 @@
       }
     }
 
-    // エラー表示
     function showError(message) {
       const canvas = document.getElementById('canvas');
       canvas.innerHTML = '<div class="error"><strong>エラー:</strong> ' + escapeHtml(message) + '</div>';
     }
 
-    // HTMLエスケープ
     function escapeHtml(str) {
       if (!str) return '';
       return String(str)

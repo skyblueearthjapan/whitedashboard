@@ -1,0 +1,98 @@
+<script>
+/**
+ * sheet.js
+ * スプレッドシートウィジェット
+ *
+ * 初期実装：リンクカード表示
+ * （将来：公開スプレッドシート埋め込み等に拡張可能）
+ */
+
+const SheetWidget = {
+  /**
+   * シートウィジェットを描画
+   * @param {Object} widget
+   * @param {Object} config
+   * @returns {string}
+   */
+  render: function(widget, config) {
+    const resolved = RefResolver.resolve(widget.urlOrRef, config);
+
+    let sheetUrl = '';
+
+    // 解決結果に応じて処理
+    if (resolved.type === 'url') {
+      sheetUrl = resolved.value;
+    } else if (resolved.type === 'asset') {
+      sheetUrl = resolved.value;
+    } else if (resolved.type === 'error') {
+      return `
+        <div class="widget-card widget-sheet" data-widget-id="${escapeHtml(widget.widgetId)}">
+          ${WidgetRenderer.renderHeader(widget, config)}
+          <div class="widget-body">
+            ${WidgetRenderer.renderError(resolved.error)}
+          </div>
+        </div>
+      `;
+    }
+
+    // URLが空の場合
+    if (!sheetUrl) {
+      return `
+        <div class="widget-card widget-sheet" data-widget-id="${escapeHtml(widget.widgetId)}">
+          ${WidgetRenderer.renderHeader(widget, config)}
+          <div class="widget-body">
+            ${WidgetRenderer.renderError('シートのURLが設定されていません')}
+          </div>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="widget-card widget-sheet" data-widget-id="${escapeHtml(widget.widgetId)}">
+        ${WidgetRenderer.renderHeader(widget, config)}
+        <div class="widget-body">
+          <div class="widget-sheet-container">
+            <div class="widget-sheet-icon">📊</div>
+            <div class="widget-sheet-info">
+              <div class="widget-sheet-label">スプレッドシート</div>
+              <div class="widget-sheet-url">${escapeHtml(this.getSheetName(sheetUrl))}</div>
+            </div>
+          </div>
+          <a href="${escapeHtml(sheetUrl)}" target="_blank" rel="noopener noreferrer" class="widget-sheet-open-btn">
+            シートを開く ↗
+          </a>
+        </div>
+      </div>
+    `;
+  },
+
+  /**
+   * URLからシート名を抽出（Google Sheets URL対応）
+   * @param {string} url
+   * @returns {string}
+   */
+  getSheetName: function(url) {
+    if (!url) return '';
+
+    // Google Sheets URLからIDを抽出
+    const sheetsMatch = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+    if (sheetsMatch) {
+      return 'Google Sheets';
+    }
+
+    // 通常のURL処理
+    try {
+      const hostname = new URL(url).hostname;
+      return hostname;
+    } catch (e) {
+      // URL解析に失敗した場合
+    }
+
+    // フォールバック
+    if (url.length > 40) {
+      return url.substring(0, 37) + '...';
+    }
+    return url;
+  }
+};
+</script>

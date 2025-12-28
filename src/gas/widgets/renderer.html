@@ -1,0 +1,130 @@
+<script>
+/**
+ * renderer.js
+ * WidgetRenderer - type分岐の入口
+ */
+
+const WidgetRenderer = {
+  /**
+   * ウィジェットを描画（type別分岐）
+   * @param {Object} widget - ウィジェットデータ
+   * @param {Object} config - App.config
+   * @returns {string} HTML文字列
+   */
+  render: function(widget, config) {
+    if (!widget || !widget.visible) {
+      return '';
+    }
+
+    const type = widget.type || 'link';
+
+    // type別レンダラーにディスパッチ
+    switch (type) {
+      case 'link':
+        return LinkWidget.render(widget, config);
+      case 'embed':
+        return EmbedWidget.render(widget, config);
+      case 'image':
+        return ImageWidget.render(widget, config);
+      case 'pdf':
+        return PdfWidget.render(widget, config);
+      case 'sheet':
+        return SheetWidget.render(widget, config);
+      case 'html':
+        return HtmlWidget.render(widget, config);
+      case 'text':
+        return this.renderUnsupported(widget, 'text');
+      case 'divider':
+        return this.renderDivider(widget);
+      default:
+        return this.renderUnsupported(widget, type);
+    }
+  },
+
+  /**
+   * 未対応typeの表示
+   * @param {Object} widget
+   * @param {string} type
+   * @returns {string}
+   */
+  renderUnsupported: function(widget, type) {
+    return `
+      <div class="widget-card widget-unsupported" data-widget-id="${escapeHtml(widget.widgetId)}">
+        ${this.renderHeader(widget, null)}
+        <div class="widget-body">
+          <div class="widget-warning">
+            未対応のウィジェット種別: ${escapeHtml(type)}
+          </div>
+        </div>
+      </div>
+    `;
+  },
+
+  /**
+   * 区切り線の表示
+   * @param {Object} widget
+   * @returns {string}
+   */
+  renderDivider: function(widget) {
+    return `
+      <div class="widget-card widget-divider" data-widget-id="${escapeHtml(widget.widgetId)}">
+        <hr class="divider-line">
+      </div>
+    `;
+  },
+
+  /**
+   * 共通ヘッダー部分（タイトル + アイコン）
+   * @param {Object} widget
+   * @param {Object} config
+   * @returns {string}
+   */
+  renderHeader: function(widget, config) {
+    let iconHtml = '';
+
+    // アイコンアセットIDがあれば表示
+    if (widget.iconAssetId && config) {
+      const asset = RefResolver.getAsset(widget.iconAssetId, config);
+      if (asset && asset.url) {
+        iconHtml = `<img class="widget-icon" src="${escapeHtml(asset.url)}" alt="">`;
+      }
+    }
+
+    return `
+      <div class="widget-header">
+        ${iconHtml}
+        <span class="widget-title">${escapeHtml(widget.title || '(無題)')}</span>
+      </div>
+    `;
+  },
+
+  /**
+   * エラー表示（参照切れなど）
+   * @param {string} message
+   * @returns {string}
+   */
+  renderError: function(message) {
+    return `
+      <div class="widget-error">
+        <span class="error-icon">!</span>
+        <span class="error-message">${escapeHtml(message)}</span>
+      </div>
+    `;
+  },
+
+  /**
+   * 別タブで開くリンク
+   * @param {string} url
+   * @param {string} label
+   * @returns {string}
+   */
+  renderExternalLink: function(url, label) {
+    if (!url) return '';
+    return `
+      <a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" class="widget-external-link">
+        ${escapeHtml(label || '別タブで開く')} ↗
+      </a>
+    `;
+  }
+};
+</script>

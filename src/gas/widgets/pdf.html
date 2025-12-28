@@ -1,0 +1,92 @@
+<script>
+/**
+ * pdf.js
+ * PDFウィジェット
+ *
+ * 初期実装：リンクカード表示
+ * （将来：Google Drive Viewer埋め込み等に拡張可能）
+ */
+
+const PdfWidget = {
+  /**
+   * PDFウィジェットを描画
+   * @param {Object} widget
+   * @param {Object} config
+   * @returns {string}
+   */
+  render: function(widget, config) {
+    const resolved = RefResolver.resolve(widget.urlOrRef, config);
+
+    let pdfUrl = '';
+
+    // 解決結果に応じて処理
+    if (resolved.type === 'url') {
+      pdfUrl = resolved.value;
+    } else if (resolved.type === 'asset') {
+      pdfUrl = resolved.value;
+    } else if (resolved.type === 'error') {
+      return `
+        <div class="widget-card widget-pdf" data-widget-id="${escapeHtml(widget.widgetId)}">
+          ${WidgetRenderer.renderHeader(widget, config)}
+          <div class="widget-body">
+            ${WidgetRenderer.renderError(resolved.error)}
+          </div>
+        </div>
+      `;
+    }
+
+    // URLが空の場合
+    if (!pdfUrl) {
+      return `
+        <div class="widget-card widget-pdf" data-widget-id="${escapeHtml(widget.widgetId)}">
+          ${WidgetRenderer.renderHeader(widget, config)}
+          <div class="widget-body">
+            ${WidgetRenderer.renderError('PDFのURLが設定されていません')}
+          </div>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="widget-card widget-pdf" data-widget-id="${escapeHtml(widget.widgetId)}">
+        ${WidgetRenderer.renderHeader(widget, config)}
+        <div class="widget-body">
+          <div class="widget-pdf-container">
+            <div class="widget-pdf-icon">📄</div>
+            <div class="widget-pdf-info">
+              <div class="widget-pdf-label">PDFドキュメント</div>
+              <div class="widget-pdf-url">${escapeHtml(this.getFileName(pdfUrl))}</div>
+            </div>
+          </div>
+          <a href="${escapeHtml(pdfUrl)}" target="_blank" rel="noopener noreferrer" class="widget-pdf-open-btn">
+            PDFを開く ↗
+          </a>
+        </div>
+      </div>
+    `;
+  },
+
+  /**
+   * URLからファイル名を抽出
+   * @param {string} url
+   * @returns {string}
+   */
+  getFileName: function(url) {
+    if (!url) return '';
+    try {
+      const pathname = new URL(url).pathname;
+      const fileName = pathname.split('/').pop();
+      if (fileName && fileName.length > 0) {
+        return decodeURIComponent(fileName);
+      }
+    } catch (e) {
+      // URL解析に失敗した場合
+    }
+    // フォールバック：URLを短縮表示
+    if (url.length > 40) {
+      return url.substring(0, 37) + '...';
+    }
+    return url;
+  }
+};
+</script>

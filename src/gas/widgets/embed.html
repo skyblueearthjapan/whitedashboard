@@ -1,0 +1,111 @@
+<script>
+/**
+ * embed.js
+ * 埋め込みウィジェット
+ *
+ * Phase4準拠：
+ * - iframe埋め込みを基本とする
+ * - 常に「別タブで開く」導線を表示
+ * - 埋め込み方式=link_fallback の場合はリンク表示
+ */
+
+const EmbedWidget = {
+  /**
+   * 埋め込みウィジェットを描画
+   * @param {Object} widget
+   * @param {Object} config
+   * @returns {string}
+   */
+  render: function(widget, config) {
+    const resolved = RefResolver.resolve(widget.urlOrRef, config);
+    const url = resolved.type === 'url' ? resolved.value : '';
+    const embedMode = widget.embedMode || 'link_fallback';
+
+    // URLが空または参照エラーの場合
+    if (!url || resolved.type === 'error') {
+      return `
+        <div class="widget-card widget-embed" data-widget-id="${escapeHtml(widget.widgetId)}">
+          ${WidgetRenderer.renderHeader(widget, config)}
+          <div class="widget-body">
+            ${WidgetRenderer.renderError(resolved.error || 'URLが設定されていません')}
+          </div>
+        </div>
+      `;
+    }
+
+    // 埋め込み方式による分岐
+    if (embedMode === 'link_fallback') {
+      // リンクフォールバックモード（AppSheet等、iframe非対応向け）
+      return this.renderAsLink(widget, config, url);
+    }
+
+    // iframe埋め込みモード
+    return this.renderAsIframe(widget, config, url);
+  },
+
+  /**
+   * iframe埋め込み表示
+   * @param {Object} widget
+   * @param {Object} config
+   * @param {string} url
+   * @returns {string}
+   */
+  renderAsIframe: function(widget, config, url) {
+    return `
+      <div class="widget-card widget-embed" data-widget-id="${escapeHtml(widget.widgetId)}">
+        ${WidgetRenderer.renderHeader(widget, config)}
+        <div class="widget-body widget-embed-body">
+          <div class="widget-embed-frame-container">
+            <iframe
+              src="${escapeHtml(url)}"
+              class="widget-embed-iframe"
+              sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+              loading="lazy"
+              title="${escapeHtml(widget.title || '')}"
+            ></iframe>
+          </div>
+          <div class="widget-embed-fallback">
+            ${WidgetRenderer.renderExternalLink(url, '別タブで開く')}
+            <span class="widget-embed-hint">※埋め込み表示できない場合はこちら</span>
+          </div>
+        </div>
+      </div>
+    `;
+  },
+
+  /**
+   * リンク表示（フォールバック）
+   * @param {Object} widget
+   * @param {Object} config
+   * @param {string} url
+   * @returns {string}
+   */
+  renderAsLink: function(widget, config, url) {
+    return `
+      <div class="widget-card widget-embed widget-embed-link-mode" data-widget-id="${escapeHtml(widget.widgetId)}">
+        ${WidgetRenderer.renderHeader(widget, config)}
+        <div class="widget-body">
+          <div class="widget-embed-link-container">
+            <a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" class="widget-embed-open-btn">
+              開く ↗
+            </a>
+            <div class="widget-embed-url">${escapeHtml(this.truncateUrl(url))}</div>
+          </div>
+          <div class="widget-embed-mode-label">リンクモード</div>
+        </div>
+      </div>
+    `;
+  },
+
+  /**
+   * URLを短縮表示
+   * @param {string} url
+   * @returns {string}
+   */
+  truncateUrl: function(url) {
+    if (!url) return '';
+    if (url.length <= 50) return url;
+    return url.substring(0, 47) + '...';
+  }
+};
+</script>

@@ -1,0 +1,57 @@
+<script>
+/**
+ * link.js
+ * リンクウィジェット
+ */
+
+const LinkWidget = {
+  /**
+   * リンクウィジェットを描画
+   * @param {Object} widget
+   * @param {Object} config
+   * @returns {string}
+   */
+  render: function(widget, config) {
+    const resolved = RefResolver.resolve(widget.urlOrRef, config);
+    const url = resolved.type === 'url' ? resolved.value : '';
+    const openMode = widget.openMode || 'same_tab';
+
+    // クリック属性
+    const targetAttr = openMode === 'new_tab' ? 'target="_blank" rel="noopener noreferrer"' : '';
+    const openLabel = openMode === 'new_tab' ? '(別タブ)' : '';
+
+    // URLが空または参照エラーの場合
+    if (!url || resolved.type === 'error') {
+      return `
+        <div class="widget-card widget-link" data-widget-id="${escapeHtml(widget.widgetId)}">
+          ${WidgetRenderer.renderHeader(widget, config)}
+          <div class="widget-body">
+            ${WidgetRenderer.renderError(resolved.error || 'URLが設定されていません')}
+          </div>
+        </div>
+      `;
+    }
+
+    return `
+      <a href="${escapeHtml(url)}" ${targetAttr} class="widget-card widget-link widget-clickable" data-widget-id="${escapeHtml(widget.widgetId)}">
+        ${WidgetRenderer.renderHeader(widget, config)}
+        <div class="widget-body">
+          <div class="widget-link-url">${escapeHtml(this.truncateUrl(url))}</div>
+          <div class="widget-link-mode">${escapeHtml(openLabel)}</div>
+        </div>
+      </a>
+    `;
+  },
+
+  /**
+   * URLを短縮表示
+   * @param {string} url
+   * @returns {string}
+   */
+  truncateUrl: function(url) {
+    if (!url) return '';
+    if (url.length <= 40) return url;
+    return url.substring(0, 37) + '...';
+  }
+};
+</script>

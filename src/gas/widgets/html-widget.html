@@ -1,0 +1,129 @@
+<script>
+/**
+ * html-widget.js
+ * HTMLウィジェット
+ *
+ * REF:HTML_xxx 参照で 06_HTML本文 から取得して表示
+ *
+ * 【注意】XSSリスク
+ * 生HTMLを直接埋め込むため、将来的にはサニタイズが必要。
+ * 現時点では信頼できる管理者のみが06_HTML本文を編集する前提。
+ * TODO: DOMPurify等によるサニタイズ実装
+ */
+
+const HtmlWidget = {
+  /**
+   * HTMLウィジェットを描画
+   * @param {Object} widget
+   * @param {Object} config
+   * @returns {string}
+   */
+  render: function(widget, config) {
+    const resolved = RefResolver.resolve(widget.urlOrRef, config);
+
+    // HTML参照の場合
+    if (resolved.type === 'html') {
+      return this.renderHtmlContent(widget, config, resolved);
+    }
+
+    // URL指定の場合（外部HTMLを読み込む場合はiframe）
+    if (resolved.type === 'url' && resolved.value) {
+      return this.renderExternalHtml(widget, config, resolved.value);
+    }
+
+    // エラーの場合
+    if (resolved.type === 'error') {
+      return `
+        <div class="widget-card widget-html" data-widget-id="${escapeHtml(widget.widgetId)}">
+          ${WidgetRenderer.renderHeader(widget, config)}
+          <div class="widget-body">
+            ${WidgetRenderer.renderError(resolved.error)}
+          </div>
+        </div>
+      `;
+    }
+
+    // その他（URL空など）
+    return `
+      <div class="widget-card widget-html" data-widget-id="${escapeHtml(widget.widgetId)}">
+        ${WidgetRenderer.renderHeader(widget, config)}
+        <div class="widget-body">
+          ${WidgetRenderer.renderError('HTML参照が設定されていません')}
+        </div>
+      </div>
+    `;
+  },
+
+  /**
+   * 06_HTML本文からのコンテンツ表示
+   * @param {Object} widget
+   * @param {Object} config
+   * @param {Object} resolved
+   * @returns {string}
+   */
+  renderHtmlContent: function(widget, config, resolved) {
+    const body = resolved.value || '';
+    const format = resolved.format || 'html';
+
+    // 本文が空の場合
+    if (!body.trim()) {
+      return `
+        <div class="widget-card widget-html" data-widget-id="${escapeHtml(widget.widgetId)}">
+          ${WidgetRenderer.renderHeader(widget, config)}
+          <div class="widget-body">
+            <div class="widget-html-empty">コンテンツがありません</div>
+          </div>
+        </div>
+      `;
+    }
+
+    // formatに応じた処理
+    let renderedBody = '';
+    if (format === 'markdown') {
+      // TODO: Markdown→HTML変換（将来実装）
+      // 現時点ではプレーンテキストとして表示
+      renderedBody = `<pre class="widget-html-markdown">${escapeHtml(body)}</pre>`;
+    } else {
+      // HTML直接埋め込み
+      // 【警告】XSSリスクあり。信頼できるソースからのみ使用すること
+      renderedBody = `<div class="widget-html-content">${body}</div>`;
+    }
+
+    return `
+      <div class="widget-card widget-html" data-widget-id="${escapeHtml(widget.widgetId)}">
+        ${WidgetRenderer.renderHeader(widget, config)}
+        <div class="widget-body widget-html-body">
+          ${renderedBody}
+        </div>
+      </div>
+    `;
+  },
+
+  /**
+   * 外部HTML（URL指定）の表示
+   * @param {Object} widget
+   * @param {Object} config
+   * @param {string} url
+   * @returns {string}
+   */
+  renderExternalHtml: function(widget, config, url) {
+    return `
+      <div class="widget-card widget-html" data-widget-id="${escapeHtml(widget.widgetId)}">
+        ${WidgetRenderer.renderHeader(widget, config)}
+        <div class="widget-body widget-html-external">
+          <iframe
+            src="${escapeHtml(url)}"
+            class="widget-html-iframe"
+            sandbox="allow-scripts allow-same-origin"
+            loading="lazy"
+            title="${escapeHtml(widget.title || '')}"
+          ></iframe>
+          <div class="widget-html-fallback">
+            ${WidgetRenderer.renderExternalLink(url, '別タブで開く')}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+};
+</script>

@@ -1,0 +1,99 @@
+<script>
+/**
+ * ref-resolver.js
+ * REF:HTML_xxx / REF:ASSET_xxx 参照解決
+ */
+
+const RefResolver = {
+  /**
+   * url_or_ref を解決して実際のURLまたはコンテンツを返す
+   * @param {string} urlOrRef - URL直指定 or REF:HTML_xxx or REF:ASSET_xxx
+   * @param {Object} config - App.config
+   * @returns {Object} { type: 'url'|'html'|'asset'|'error', value: string, raw: Object|null }
+   */
+  resolve: function(urlOrRef, config) {
+    if (!urlOrRef || typeof urlOrRef !== 'string') {
+      return { type: 'error', value: '', error: 'URL/参照が未設定です', raw: null };
+    }
+
+    const trimmed = urlOrRef.trim();
+
+    // REF:HTML_xxx パターン
+    if (trimmed.startsWith('REF:HTML_')) {
+      const contentId = trimmed.replace('REF:HTML_', '');
+      return this.resolveHtmlRef(contentId, config);
+    }
+
+    // REF:ASSET_xxx パターン
+    if (trimmed.startsWith('REF:ASSET_')) {
+      const assetId = trimmed.replace('REF:ASSET_', '');
+      return this.resolveAssetRef(assetId, config);
+    }
+
+    // 通常のURL
+    return { type: 'url', value: trimmed, raw: null };
+  },
+
+  /**
+   * HTML参照を解決
+   * @param {string} contentId - HTML本文ID
+   * @param {Object} config
+   * @returns {Object}
+   */
+  resolveHtmlRef: function(contentId, config) {
+    if (!config.htmlContent || !config.htmlContent[contentId]) {
+      return {
+        type: 'error',
+        value: '',
+        error: 'HTML参照が見つかりません: ' + contentId,
+        raw: null
+      };
+    }
+
+    const content = config.htmlContent[contentId];
+    return {
+      type: 'html',
+      value: content.body || '',
+      format: content.format || 'html',
+      raw: content
+    };
+  },
+
+  /**
+   * アセット参照を解決
+   * @param {string} assetId - アセットID
+   * @param {Object} config
+   * @returns {Object}
+   */
+  resolveAssetRef: function(assetId, config) {
+    if (!config.assets || !config.assets[assetId]) {
+      return {
+        type: 'error',
+        value: '',
+        error: 'アセット参照が見つかりません: ' + assetId,
+        raw: null
+      };
+    }
+
+    const asset = config.assets[assetId];
+    return {
+      type: 'asset',
+      value: asset.url || '',
+      assetType: asset.assetType,
+      altText: asset.altText || '',
+      raw: asset
+    };
+  },
+
+  /**
+   * アセットIDから直接アセット情報を取得
+   * @param {string} assetId
+   * @param {Object} config
+   * @returns {Object|null}
+   */
+  getAsset: function(assetId, config) {
+    if (!assetId || !config.assets) return null;
+    return config.assets[assetId] || null;
+  }
+};
+</script>

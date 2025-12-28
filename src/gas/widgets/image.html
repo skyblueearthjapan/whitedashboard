@@ -1,0 +1,67 @@
+<script>
+/**
+ * image.js
+ * 画像ウィジェット
+ */
+
+const ImageWidget = {
+  /**
+   * 画像ウィジェットを描画
+   * @param {Object} widget
+   * @param {Object} config
+   * @returns {string}
+   */
+  render: function(widget, config) {
+    const resolved = RefResolver.resolve(widget.urlOrRef, config);
+
+    let imageUrl = '';
+    let altText = widget.title || '';
+
+    // 解決結果に応じて処理
+    if (resolved.type === 'url') {
+      imageUrl = resolved.value;
+    } else if (resolved.type === 'asset') {
+      imageUrl = resolved.value;
+      altText = resolved.altText || altText;
+    } else if (resolved.type === 'error') {
+      return `
+        <div class="widget-card widget-image" data-widget-id="${escapeHtml(widget.widgetId)}">
+          ${WidgetRenderer.renderHeader(widget, config)}
+          <div class="widget-body">
+            ${WidgetRenderer.renderError(resolved.error)}
+          </div>
+        </div>
+      `;
+    }
+
+    // URLが空の場合
+    if (!imageUrl) {
+      return `
+        <div class="widget-card widget-image" data-widget-id="${escapeHtml(widget.widgetId)}">
+          ${WidgetRenderer.renderHeader(widget, config)}
+          <div class="widget-body">
+            ${WidgetRenderer.renderError('画像URLが設定されていません')}
+          </div>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="widget-card widget-image" data-widget-id="${escapeHtml(widget.widgetId)}">
+        ${WidgetRenderer.renderHeader(widget, config)}
+        <div class="widget-body widget-image-body">
+          <div class="widget-image-container">
+            <img
+              src="${escapeHtml(imageUrl)}"
+              alt="${escapeHtml(altText)}"
+              class="widget-image-img"
+              loading="lazy"
+              onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\'widget-image-placeholder\\'>画像を読み込めません</div>';"
+            >
+          </div>
+        </div>
+      </div>
+    `;
+  }
+};
+</script>
