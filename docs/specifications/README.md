@@ -14,9 +14,9 @@
 | Phase 5 | 権限・監査・運用仕様 | 完了 | [phase5-permission-audit-operation.md](./phase5-permission-audit-operation.md) |
 | Phase 6 | 実装方針（技術スタック・システム構成） | 完了 | [phase6-implementation-design.md](./phase6-implementation-design.md) |
 | Phase 7 | MVP定義と拡張ロードマップ | 完了 | [phase7-mvp-roadmap.md](./phase7-mvp-roadmap.md) |
-| Phase 8 | TBD | 未着手 | - |
-| Phase 9 | TBD | 未着手 | - |
-| Phase 10 | TBD | 未着手 | - |
+| Phase 8 | MVP実装タスク分解 | 完了 | [phase8-mvp-implementation-tasks.md](./phase8-mvp-implementation-tasks.md) |
+| Phase 9 | 初期リリース後の改善リスト | 未着手 | - |
+| Phase 10 | 運用UI（総務向け管理画面）設計 | 未着手 | - |
 
 ## 設計方針
 
