@@ -46,6 +46,7 @@ const COLUMN_MAPPINGS = {
   '表示*': 'visible',
   '管理者': 'owner',
   '棚卸周期': 'review_cycle',
+  '最終レビュー日': 'last_reviewed_at',
 
   // 03_レイアウト
   'ページID*': 'page_id',

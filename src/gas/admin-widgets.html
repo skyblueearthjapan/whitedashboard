@@ -242,6 +242,21 @@
       color: #1a73e8;
     }
 
+    .badge-review-overdue {
+      background: #fce8e6;
+      color: #c5221f;
+    }
+
+    .badge-review-due-soon {
+      background: #fef7e0;
+      color: #b06000;
+    }
+
+    .badge-review-never {
+      background: #e0e0e0;
+      color: #666;
+    }
+
     /* ========================================
        詳細パネル
     ======================================== */
@@ -579,6 +594,7 @@
                 <th>種別</th>
                 <th>ページ</th>
                 <th>表示</th>
+                <th>棚卸</th>
                 <th>管理者</th>
               </tr>
             </thead>
@@ -591,6 +607,9 @@
             ? '<span class="badge badge-visible">表示</span>'
             : '<span class="badge badge-hidden">非表示</span>';
 
+          // 棚卸ステータスバッジ
+          const reviewBadge = this.getReviewBadge(w);
+
           html += `
             <tr class="${selectedClass}" onclick="WidgetAdmin.selectWidget('${this.escapeHtml(w.widgetId)}')">
               <td>${this.escapeHtml(w.widgetId)}</td>
@@ -598,6 +617,7 @@
               <td><span class="badge badge-type">${this.escapeHtml(w.type)}</span></td>
               <td>${this.escapeHtml(w.defaultPage)}</td>
               <td>${visibleBadge}</td>
+              <td>${reviewBadge}</td>
               <td>${this.escapeHtml(w.owner || '-')}</td>
             </tr>
           `;
@@ -925,7 +945,11 @@
                 embedMode: w.embedMode,
                 visible: w.visible,
                 owner: w.owner,
-                reviewCycle: w.reviewCycle
+                reviewCycle: w.reviewCycle,
+                lastReviewedAt: w.lastReviewedAt,
+                reviewStatus: w.reviewStatus,
+                nextDueDate: w.nextDueDate,
+                daysUntilDue: w.daysUntilDue
               }));
               this.applyFilters();
 
@@ -985,6 +1009,26 @@
           .replace(/>/g, '&gt;')
           .replace(/"/g, '&quot;')
           .replace(/'/g, '&#039;');
+      },
+
+      /**
+       * 棚卸ステータスバッジを生成
+       */
+      getReviewBadge: function(widget) {
+        const status = widget.reviewStatus;
+
+        if (status === 'overdue') {
+          return '<span class="badge badge-review-overdue" title="期限切れ">🔴</span>';
+        } else if (status === 'due_soon') {
+          return '<span class="badge badge-review-due-soon" title="期限近い">🟡</span>';
+        } else if (status === 'never_reviewed') {
+          return '<span class="badge badge-review-never" title="未レビュー">⚪</span>';
+        } else if (status === 'ok') {
+          return '<span class="badge badge-visible" title="OK">✓</span>';
+        } else {
+          // exempt or unknown
+          return '-';
+        }
       }
     };
 

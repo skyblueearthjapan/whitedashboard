@@ -100,9 +100,10 @@ function renderAdminView(isEditor) {
   // HTMLテンプレートを読み込み
   const template = HtmlService.createTemplateFromFile('admin');
 
-  // 設定データを取得
+  // 設定データを取得し、棚卸ステータスを付与
   const config = getConfig();
-  template.configJson = JSON.stringify(config);
+  const enrichedConfig = enrichConfigWithReviewStatus(config);
+  template.configJson = JSON.stringify(enrichedConfig);
 
   // HTMLを生成
   const output = template.evaluate()
@@ -133,9 +134,10 @@ function renderAdminWidgetsView(isEditor) {
   // HTMLテンプレートを読み込み
   const template = HtmlService.createTemplateFromFile('admin-widgets');
 
-  // 設定データを取得
+  // 設定データを取得し、棚卸ステータスを付与
   const config = getConfig();
-  template.configJson = JSON.stringify(config);
+  const enrichedConfig = enrichConfigWithReviewStatus(config);
+  template.configJson = JSON.stringify(enrichedConfig);
 
   // HTMLを生成
   const output = template.evaluate()

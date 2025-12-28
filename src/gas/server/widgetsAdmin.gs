@@ -32,13 +32,16 @@ function listWidgets() {
       return { ok: false, error: '権限がありません' };
     }
 
+    // 棚卸ステータスを付与して返す
     const config = getConfig();
+    const enrichedConfig = enrichConfigWithReviewStatus(config);
+
     return {
       ok: true,
-      widgets: config.widgets,
-      assets: config.assets,
-      htmlContent: config.htmlContent,
-      pages: config.pages
+      widgets: enrichedConfig.widgets,
+      assets: enrichedConfig.assets,
+      htmlContent: enrichedConfig.htmlContent,
+      pages: enrichedConfig.pages
     };
   } catch (e) {
     Logger.log('listWidgets error: ' + e.message);

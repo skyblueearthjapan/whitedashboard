@@ -429,18 +429,30 @@
       const main = document.getElementById('main');
       const summary = Validators.getSummary(AdminApp.validation);
 
+      // 棚卸レビューを警告/注意に分類
+      const reviewErrors = []; // overdue, never_reviewed → P0
+      const reviewWarnings = []; // due_soon → P1
+
+      AdminApp.validation.reviews.forEach(r => {
+        if (r.status === 'overdue' || r.status === 'never_reviewed') {
+          reviewErrors.push(r);
+        } else if (r.status === 'due_soon') {
+          reviewWarnings.push(r);
+        }
+      });
+
       let html = '';
 
-      // サマリーカード
-      html += renderSummary(summary);
+      // サマリーカード（棚卸も含めた統合値）
+      html += renderSummary(summary, reviewErrors.length, reviewWarnings.length);
 
-      // 警告セクション（P0）
-      html += renderErrorSection(AdminApp.validation.errors);
+      // 警告セクション（P0）- 検証エラー + 棚卸期限切れ/未レビュー
+      html += renderErrorSection(AdminApp.validation.errors, reviewErrors);
 
-      // 注意セクション（P1）
-      html += renderWarningSection(AdminApp.validation.warnings);
+      // 注意セクション（P1）- 検証警告 + 棚卸期限近い
+      html += renderWarningSection(AdminApp.validation.warnings, reviewWarnings);
 
-      // 棚卸セクション
+      // 棚卸セクション（全体一覧用）
       html += renderReviewSection(AdminApp.validation.reviews);
 
       main.innerHTML = html;
@@ -460,26 +472,28 @@
     /* ========================================
        サマリーカード描画
     ======================================== */
-    function renderSummary(summary) {
-      const isAllOk = summary.errorCount === 0 && summary.warningCount === 0 && summary.reviewOverdueCount === 0;
+    function renderSummary(summary, reviewErrorCount, reviewWarningCount) {
+      // 総合カウント（検証結果 + 棚卸）
+      const totalErrors = summary.errorCount + reviewErrorCount;
+      const totalWarnings = summary.warningCount + reviewWarningCount;
 
       return `
         <div class="summary-grid">
-          <div class="summary-card ${summary.errorCount > 0 ? 'error' : 'ok'}">
+          <div class="summary-card ${totalErrors > 0 ? 'error' : 'ok'}">
             <div class="summary-label">警告（P0）</div>
-            <div class="summary-value ${summary.errorCount > 0 ? 'error' : 'ok'}">${summary.errorCount}</div>
+            <div class="summary-value ${totalErrors > 0 ? 'error' : 'ok'}">${totalErrors}</div>
           </div>
-          <div class="summary-card ${summary.warningCount > 0 ? 'warning' : 'ok'}">
+          <div class="summary-card ${totalWarnings > 0 ? 'warning' : 'ok'}">
             <div class="summary-label">注意（P1）</div>
-            <div class="summary-value ${summary.warningCount > 0 ? 'warning' : 'ok'}">${summary.warningCount}</div>
+            <div class="summary-value ${totalWarnings > 0 ? 'warning' : 'ok'}">${totalWarnings}</div>
           </div>
-          <div class="summary-card ${summary.reviewOverdueCount > 0 ? 'error' : 'review'}">
-            <div class="summary-label">棚卸期限切れ</div>
-            <div class="summary-value ${summary.reviewOverdueCount > 0 ? 'error' : 'review'}">${summary.reviewOverdueCount}</div>
+          <div class="summary-card ${summary.reviewOverdueCount + summary.reviewNeverCount > 0 ? 'error' : 'review'}">
+            <div class="summary-label">棚卸期限切れ/未</div>
+            <div class="summary-value ${summary.reviewOverdueCount + summary.reviewNeverCount > 0 ? 'error' : 'review'}">${summary.reviewOverdueCount + summary.reviewNeverCount}</div>
           </div>
-          <div class="summary-card review">
+          <div class="summary-card ${summary.reviewDueSoonCount > 0 ? 'warning' : 'review'}">
             <div class="summary-label">棚卸期限近い</div>
-            <div class="summary-value review">${summary.reviewDueSoonCount}</div>
+            <div class="summary-value ${summary.reviewDueSoonCount > 0 ? 'warning' : 'review'}">${summary.reviewDueSoonCount}</div>
           </div>
         </div>
       `;
@@ -488,8 +502,9 @@
     /* ========================================
        警告セクション描画
     ======================================== */
-    function renderErrorSection(errors) {
-      const count = errors.length;
+    function renderErrorSection(errors, reviewErrors) {
+      reviewErrors = reviewErrors || [];
+      const count = errors.length + reviewErrors.length;
       const openClass = count > 0 ? ' open' : '';
 
       let itemsHtml = '';
@@ -497,6 +512,8 @@
         itemsHtml = '<div class="empty-state"><div class="icon">✓</div><p>警告はありません</p></div>';
       } else {
         itemsHtml = '<ul class="item-list">';
+
+        // 検証エラー
         errors.forEach(e => {
           itemsHtml += `
             <li class="item">
@@ -510,6 +527,30 @@
             </li>
           `;
         });
+
+        // 棚卸エラー（期限切れ/未レビュー）
+        reviewErrors.forEach(r => {
+          const statusLabel = r.status === 'overdue' ? '期限切れ' : '未レビュー';
+          itemsHtml += `
+            <li class="item">
+              <div class="item-icon error">&#x1F4CB;</div>
+              <div class="item-content">
+                <div class="item-title">棚卸${statusLabel}: ${escapeHtml(r.title || r.widgetId)}</div>
+                <div class="item-detail">${escapeHtml(r.message)}</div>
+                <div class="item-meta">
+                  ID: ${escapeHtml(r.widgetId)} / 管理者: ${escapeHtml(r.owner)} / 周期: ${escapeHtml(r.reviewCycle)}
+                  ${r.lastReviewedAt ? ' / 最終: ' + r.lastReviewedAt : ''}
+                  ${r.nextDueDate ? ' / 次回期限: ' + r.nextDueDate : ''}
+                </div>
+                <div class="item-actions">
+                  <a href="?view=admin_widgets&widget_id=${encodeURIComponent(r.widgetId)}" class="fix-link">修正する</a>
+                </div>
+              </div>
+              <span class="item-status overdue">${statusLabel}</span>
+            </li>
+          `;
+        });
+
         itemsHtml += '</ul>';
       }
 
@@ -532,14 +573,17 @@
     /* ========================================
        注意セクション描画
     ======================================== */
-    function renderWarningSection(warnings) {
-      const count = warnings.length;
+    function renderWarningSection(warnings, reviewWarnings) {
+      reviewWarnings = reviewWarnings || [];
+      const count = warnings.length + reviewWarnings.length;
 
       let itemsHtml = '';
       if (count === 0) {
         itemsHtml = '<div class="empty-state"><div class="icon">✓</div><p>注意はありません</p></div>';
       } else {
         itemsHtml = '<ul class="item-list">';
+
+        // 検証警告
         warnings.forEach(w => {
           itemsHtml += `
             <li class="item">
@@ -553,6 +597,29 @@
             </li>
           `;
         });
+
+        // 棚卸警告（期限近い）
+        reviewWarnings.forEach(r => {
+          itemsHtml += `
+            <li class="item">
+              <div class="item-icon warning">&#x1F4CB;</div>
+              <div class="item-content">
+                <div class="item-title">棚卸期限近い: ${escapeHtml(r.title || r.widgetId)}</div>
+                <div class="item-detail">${escapeHtml(r.message)}</div>
+                <div class="item-meta">
+                  ID: ${escapeHtml(r.widgetId)} / 管理者: ${escapeHtml(r.owner)} / 周期: ${escapeHtml(r.reviewCycle)}
+                  ${r.lastReviewedAt ? ' / 最終: ' + r.lastReviewedAt : ''}
+                  ${r.nextDueDate ? ' / 次回期限: ' + r.nextDueDate : ''}
+                </div>
+                <div class="item-actions">
+                  <a href="?view=admin_widgets&widget_id=${encodeURIComponent(r.widgetId)}" class="fix-link">修正する</a>
+                </div>
+              </div>
+              <span class="item-status due-soon">期限近い</span>
+            </li>
+          `;
+        });
+
         itemsHtml += '</ul>';
       }
 
@@ -578,7 +645,7 @@
     function renderReviewSection(reviews) {
       const overdues = reviews.filter(r => r.status === 'overdue');
       const dueSoons = reviews.filter(r => r.status === 'due_soon');
-      const nevers = reviews.filter(r => r.status === 'never_reviewed' || r.status === 'not_set');
+      const nevers = reviews.filter(r => r.status === 'never_reviewed');
       const count = overdues.length + dueSoons.length + nevers.length;
 
       // 期限切れ優先でソート
@@ -593,11 +660,10 @@
           const statusClass = r.status === 'overdue' ? 'overdue' :
                               r.status === 'due_soon' ? 'due-soon' : 'never';
           const statusLabel = r.status === 'overdue' ? '期限切れ' :
-                              r.status === 'due_soon' ? '期限近い' :
-                              r.status === 'never_reviewed' ? '未レビュー' : '未設定';
+                              r.status === 'due_soon' ? '期限近い' : '未レビュー';
 
           const reviewLinks = r.widgetId ?
-            `<div class="item-actions"><a href="?view=admin_widgets&widget_id=${encodeURIComponent(r.widgetId)}" class="fix-link">ウィジェット管理</a></div>` : '';
+            `<div class="item-actions"><a href="?view=admin_widgets&widget_id=${encodeURIComponent(r.widgetId)}" class="fix-link">修正する</a></div>` : '';
 
           itemsHtml += `
             <li class="item">
@@ -607,7 +673,8 @@
                 <div class="item-detail">${escapeHtml(r.message)}</div>
                 <div class="item-meta">
                   ID: ${escapeHtml(r.widgetId)} / 管理者: ${escapeHtml(r.owner)} / 周期: ${escapeHtml(r.reviewCycle)}
-                  ${r.lastReviewedAt ? ' / 最終レビュー: ' + r.lastReviewedAt : ''}
+                  ${r.lastReviewedAt ? ' / 最終: ' + r.lastReviewedAt : ''}
+                  ${r.nextDueDate ? ' / 次回期限: ' + r.nextDueDate : ''}
                 </div>
                 ${reviewLinks}
               </div>
@@ -622,7 +689,7 @@
         <div class="section${overdues.length > 0 ? ' open' : ''}">
           <div class="section-header">
             <div class="section-title">
-              棚卸
+              棚卸一覧
               <span class="section-count${overdues.length > 0 ? ' error' : ''}">${count}件</span>
             </div>
             <span class="section-toggle"></span>

@@ -282,86 +282,52 @@ const Validators = {
 
   /**
    * 棚卸チェック
+   * サーバ側で計算されたreviewStatusを使用（指示N対応）
    */
   checkReviewCycles: function(config, result) {
-    const now = new Date();
-    const cycleTodays = {
-      'weekly': 7,
-      'monthly': 30,
-      'quarterly': 90,
-      'yearly': 365
-    };
-
     config.widgets.forEach(w => {
-      if (!w.reviewCycle || w.reviewCycle === 'none') {
-        // 棚卸未設定
-        result.reviews.push({
-          status: 'not_set',
-          widgetId: w.widgetId,
-          title: w.title,
-          owner: w.owner || '(未設定)',
-          reviewCycle: 'none',
-          message: '棚卸周期が未設定です'
-        });
+      // review_cycle が none/空 の場合は対象外
+      if (!w.reviewCycle || w.reviewCycle === 'none' || w.reviewCycle.trim() === '') {
         return;
       }
 
-      const cycleDays = cycleTodays[w.reviewCycle];
-      if (!cycleDays) {
-        result.reviews.push({
-          status: 'unknown_cycle',
-          widgetId: w.widgetId,
-          title: w.title,
-          owner: w.owner || '(未設定)',
-          reviewCycle: w.reviewCycle,
-          message: '不明な棚卸周期: ' + w.reviewCycle
-        });
+      // サーバ側で計算済みの reviewStatus を使用
+      const status = w.reviewStatus;
+
+      // ok または exempt の場合は警告不要
+      if (status === 'ok' || status === 'exempt') {
         return;
       }
 
-      // last_reviewed_at がなければ「未レビュー」扱い
-      // MVPでは監査ログから取得する機能は省略し、単純に「未レビュー」とする
-      const lastReviewedAt = w.lastReviewedAt ? new Date(w.lastReviewedAt) : null;
-
-      if (!lastReviewedAt) {
-        result.reviews.push({
-          status: 'never_reviewed',
-          widgetId: w.widgetId,
-          title: w.title,
-          owner: w.owner || '(未設定)',
-          reviewCycle: w.reviewCycle,
-          message: 'まだレビューされていません'
-        });
-        return;
-      }
-
-      const daysSinceReview = Math.floor((now - lastReviewedAt) / (1000 * 60 * 60 * 24));
-      const daysUntilDue = cycleDays - daysSinceReview;
-
-      if (daysUntilDue < 0) {
-        result.reviews.push({
-          status: 'overdue',
-          widgetId: w.widgetId,
-          title: w.title,
-          owner: w.owner || '(未設定)',
-          reviewCycle: w.reviewCycle,
-          daysOverdue: Math.abs(daysUntilDue),
-          lastReviewedAt: lastReviewedAt.toISOString().split('T')[0],
-          message: cycleDays + '日周期を' + Math.abs(daysUntilDue) + '日超過'
-        });
-      } else if (daysUntilDue <= 7) {
-        result.reviews.push({
-          status: 'due_soon',
-          widgetId: w.widgetId,
-          title: w.title,
-          owner: w.owner || '(未設定)',
-          reviewCycle: w.reviewCycle,
-          daysUntilDue: daysUntilDue,
-          lastReviewedAt: lastReviewedAt.toISOString().split('T')[0],
-          message: 'あと' + daysUntilDue + '日で期限'
-        });
-      }
+      // 棚卸対象としてreviewsに追加
+      result.reviews.push({
+        status: status,
+        widgetId: w.widgetId,
+        title: w.title,
+        owner: w.owner || '(未設定)',
+        reviewCycle: w.reviewCycle,
+        lastReviewedAt: w.lastReviewedAt || null,
+        nextDueDate: w.nextDueDate || null,
+        daysUntilDue: w.daysUntilDue,
+        message: w.reviewMessage || this.getReviewMessage(status, w)
+      });
     });
+  },
+
+  /**
+   * レビューメッセージを生成（フォールバック用）
+   */
+  getReviewMessage: function(status, widget) {
+    switch (status) {
+      case 'overdue':
+        return '期限切れ';
+      case 'due_soon':
+        return 'あと' + (widget.daysUntilDue || 0) + '日で期限';
+      case 'never_reviewed':
+        return 'まだレビューされていません';
+      default:
+        return '';
+    }
   },
 
   /**

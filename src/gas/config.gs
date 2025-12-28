@@ -89,7 +89,8 @@ function buildWidgets(rawWidgets) {
     embedMode: w.embed_mode || 'link_fallback',
     visible: w.visible !== false, // デフォルトtrue
     owner: w.owner || '',
-    reviewCycle: w.review_cycle || 'none'
+    reviewCycle: w.review_cycle || 'none',
+    lastReviewedAt: w.last_reviewed_at || null // 最終レビュー日時
   })).filter(w => w.widgetId); // IDがないものは除外
 }
 
