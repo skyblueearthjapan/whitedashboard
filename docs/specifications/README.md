@@ -16,7 +16,7 @@
 | Phase 7 | MVP定義と拡張ロードマップ | 完了 | [phase7-mvp-roadmap.md](./phase7-mvp-roadmap.md) |
 | Phase 8 | MVP実装タスク分解 | 完了 | [phase8-mvp-implementation-tasks.md](./phase8-mvp-implementation-tasks.md) |
 | Phase 9 | 初期リリース後の改善リスト | 完了 | [phase9-post-release-improvements.md](./phase9-post-release-improvements.md) |
-| Phase 10 | 運用UI（総務向け管理画面）設計 | 未着手 | - |
+| Phase 10 | 運用UI（総務向け管理画面）設計 | 完了 | [phase10-admin-ui-design.md](./phase10-admin-ui-design.md) |
 
 ## 設計方針
 
