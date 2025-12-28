@@ -720,6 +720,26 @@
 
         // 一覧描画
         this.renderTable();
+
+        // URLパラメータから初期選択
+        this.handleDeepLink();
+      },
+
+      /* ========================================
+         Deep Link処理（URLパラメータから初期選択）
+      ======================================== */
+      handleDeepLink: function() {
+        const params = new URLSearchParams(window.location.search);
+        const contentId = params.get('content_id');
+
+        if (contentId) {
+          const content = this.contents.find(c => c.content_id === contentId);
+          if (content) {
+            this.selectContent(contentId);
+          } else {
+            this.showToast('HTML本文 "' + contentId + '" が見つかりません', 'warning');
+          }
+        }
       },
 
       /* ========================================

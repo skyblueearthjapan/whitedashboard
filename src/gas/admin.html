@@ -300,6 +300,41 @@
     }
 
     /* ========================================
+       修正リンク
+    ======================================== */
+    .item-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .fix-link {
+      display: inline-block;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 500;
+      color: #1a73e8;
+      background: #e8f0fe;
+      border-radius: 4px;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .fix-link:hover {
+      background: #d2e3fc;
+      text-decoration: none;
+    }
+
+    .fix-link.secondary {
+      color: #666;
+      background: #f0f0f0;
+    }
+
+    .fix-link.secondary:hover {
+      background: #e0e0e0;
+    }
+
+    /* ========================================
        空状態
     ======================================== */
     .empty-state {
@@ -470,6 +505,7 @@
                 <div class="item-title">${escapeHtml(getErrorTitle(e))}</div>
                 <div class="item-detail">${escapeHtml(e.message)}</div>
                 <div class="item-meta">${escapeHtml(getErrorMeta(e))}</div>
+                ${renderFixLinks(e)}
               </div>
             </li>
           `;
@@ -512,6 +548,7 @@
                 <div class="item-title">${escapeHtml(getErrorTitle(w))}</div>
                 <div class="item-detail">${escapeHtml(w.message)}</div>
                 <div class="item-meta">${escapeHtml(getErrorMeta(w))}</div>
+                ${renderFixLinks(w)}
               </div>
             </li>
           `;
@@ -559,9 +596,12 @@
                               r.status === 'due_soon' ? '期限近い' :
                               r.status === 'never_reviewed' ? '未レビュー' : '未設定';
 
+          const reviewLinks = r.widgetId ?
+            `<div class="item-actions"><a href="?view=admin_widgets&widget_id=${encodeURIComponent(r.widgetId)}" class="fix-link">ウィジェット管理</a></div>` : '';
+
           itemsHtml += `
             <li class="item">
-              <div class="item-icon review">📋</div>
+              <div class="item-icon review">&#x1F4CB;</div>
               <div class="item-content">
                 <div class="item-title">${escapeHtml(r.title || r.widgetId)}</div>
                 <div class="item-detail">${escapeHtml(r.message)}</div>
@@ -569,6 +609,7 @@
                   ID: ${escapeHtml(r.widgetId)} / 管理者: ${escapeHtml(r.owner)} / 周期: ${escapeHtml(r.reviewCycle)}
                   ${r.lastReviewedAt ? ' / 最終レビュー: ' + r.lastReviewedAt : ''}
                 </div>
+                ${reviewLinks}
               </div>
               <span class="item-status ${statusClass}">${statusLabel}</span>
             </li>
@@ -625,6 +666,104 @@
       if (e.assetId) parts.push('アセット: ' + e.assetId);
       if (e.widget1 && e.widget2) parts.push('衝突: ' + e.widget1 + ' ↔ ' + e.widget2);
       return parts.join(' / ') || '';
+    }
+
+    /**
+     * エラー種別に応じた修正リンクを生成
+     */
+    function getFixLinks(e) {
+      const links = [];
+
+      switch (e.type) {
+        // ID重複
+        case 'duplicate_page_id':
+          if (e.id) links.push({ url: '?view=admin_pages&page_id=' + encodeURIComponent(e.id), label: 'ページ管理' });
+          break;
+
+        case 'duplicate_widget_id':
+          if (e.id) links.push({ url: '?view=admin_widgets&widget_id=' + encodeURIComponent(e.id), label: 'ウィジェット管理' });
+          break;
+
+        case 'duplicate_asset_id':
+          if (e.id) links.push({ url: '?view=admin_assets&asset_id=' + encodeURIComponent(e.id), label: 'アセット管理' });
+          break;
+
+        case 'duplicate_content_id':
+          if (e.id) links.push({ url: '?view=admin_html&content_id=' + encodeURIComponent(e.id), label: 'HTML本文管理' });
+          break;
+
+        // 参照切れ（HTML）
+        case 'broken_html_ref':
+          if (e.widgetId) links.push({ url: '?view=admin_widgets&widget_id=' + encodeURIComponent(e.widgetId), label: 'ウィジェット修正' });
+          if (e.refId) links.push({ url: '?view=admin_html&content_id=' + encodeURIComponent(e.refId), label: 'HTML本文確認', secondary: true });
+          break;
+
+        // 参照切れ（アセット - アイコン）
+        case 'broken_icon_ref':
+          if (e.widgetId) links.push({ url: '?view=admin_widgets&widget_id=' + encodeURIComponent(e.widgetId), label: 'ウィジェット修正' });
+          if (e.assetId) links.push({ url: '?view=admin_assets&asset_id=' + encodeURIComponent(e.assetId), label: 'アセット確認', secondary: true });
+          break;
+
+        // 参照切れ（アセット）
+        case 'broken_asset_ref':
+          if (e.widgetId) links.push({ url: '?view=admin_widgets&widget_id=' + encodeURIComponent(e.widgetId), label: 'ウィジェット修正' });
+          if (e.assetId) links.push({ url: '?view=admin_assets&asset_id=' + encodeURIComponent(e.assetId), label: 'アセット確認', secondary: true });
+          break;
+
+        // 参照切れ（ページヘッダー）
+        case 'broken_header_ref':
+          if (e.pageId) links.push({ url: '?view=admin_pages&page_id=' + encodeURIComponent(e.pageId), label: 'ページ修正' });
+          if (e.assetId) links.push({ url: '?view=admin_assets&asset_id=' + encodeURIComponent(e.assetId), label: 'アセット確認', secondary: true });
+          break;
+
+        // URL未設定
+        case 'missing_url':
+          if (e.widgetId) links.push({ url: '?view=admin_widgets&widget_id=' + encodeURIComponent(e.widgetId), label: 'ウィジェット修正' });
+          break;
+
+        // 孤児レイアウト
+        case 'orphan_layout':
+          links.push({ url: '?view=admin_widgets', label: 'ウィジェット管理' });
+          if (e.pageId) links.push({ url: '?view=admin_audit&action=save_layout&page_id=' + encodeURIComponent(e.pageId), label: '監査ログ', secondary: true });
+          break;
+
+        // レイアウト未設定
+        case 'no_layout':
+          if (e.widgetId) links.push({ url: '?view=admin_widgets&widget_id=' + encodeURIComponent(e.widgetId), label: 'ウィジェット修正' });
+          break;
+
+        // Manual配置衝突
+        case 'manual_collision':
+          if (e.pageId) links.push({ url: '?view=admin_pages&page_id=' + encodeURIComponent(e.pageId), label: 'ページ確認' });
+          if (e.widget1) links.push({ url: '?view=admin_widgets&widget_id=' + encodeURIComponent(e.widget1), label: e.widget1 + ' 修正', secondary: true });
+          if (e.widget2) links.push({ url: '?view=admin_widgets&widget_id=' + encodeURIComponent(e.widget2), label: e.widget2 + ' 修正', secondary: true });
+          break;
+
+        default:
+          // 汎用フォールバック
+          if (e.widgetId) links.push({ url: '?view=admin_widgets&widget_id=' + encodeURIComponent(e.widgetId), label: 'ウィジェット' });
+          if (e.pageId) links.push({ url: '?view=admin_pages&page_id=' + encodeURIComponent(e.pageId), label: 'ページ' });
+          if (e.assetId) links.push({ url: '?view=admin_assets&asset_id=' + encodeURIComponent(e.assetId), label: 'アセット' });
+          break;
+      }
+
+      return links;
+    }
+
+    /**
+     * 修正リンクHTMLを生成
+     */
+    function renderFixLinks(e) {
+      const links = getFixLinks(e);
+      if (links.length === 0) return '';
+
+      let html = '<div class="item-actions">';
+      links.forEach(link => {
+        const className = link.secondary ? 'fix-link secondary' : 'fix-link';
+        html += `<a href="${link.url}" class="${className}">${escapeHtml(link.label)}</a>`;
+      });
+      html += '</div>';
+      return html;
     }
 
     function showError(message) {

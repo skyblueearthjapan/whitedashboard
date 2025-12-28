@@ -502,6 +502,27 @@
 
         // 一覧描画
         this.renderTable();
+
+        // URLパラメータから初期選択
+        this.handleDeepLink();
+      },
+
+      /* ========================================
+         Deep Link処理（URLパラメータから初期選択）
+      ======================================== */
+      handleDeepLink: function() {
+        const params = new URLSearchParams(window.location.search);
+        const widgetId = params.get('widget_id');
+
+        if (widgetId) {
+          const widget = this.widgets.find(w => w.widgetId === widgetId);
+          if (widget) {
+            this.selectWidget(widgetId);
+          } else {
+            // 該当IDが見つからない場合
+            this.showToast('ウィジェット "' + widgetId + '" が見つかりません', 'warning');
+          }
+        }
       },
 
       /* ========================================

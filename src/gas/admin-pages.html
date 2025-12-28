@@ -537,6 +537,26 @@
 
         // 一覧描画
         this.renderTable();
+
+        // URLパラメータから初期選択
+        this.handleDeepLink();
+      },
+
+      /* ========================================
+         Deep Link処理（URLパラメータから初期選択）
+      ======================================== */
+      handleDeepLink: function() {
+        const params = new URLSearchParams(window.location.search);
+        const pageId = params.get('page_id');
+
+        if (pageId) {
+          const page = this.pages.find(p => p.pageId === pageId);
+          if (page) {
+            this.selectPage(pageId);
+          } else {
+            this.showToast('ページ "' + pageId + '" が見つかりません', 'warning');
+          }
+        }
       },
 
       /* ========================================
