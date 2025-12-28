@@ -9,7 +9,7 @@
 | Phase 0 | 前提・用語・ゴール定義 | 完了 | [phase0-goals-and-definitions.md](./phase0-goals-and-definitions.md) |
 | Phase 1 | データ仕様（Spreadsheet = DB） | 完了 | [phase1-data-specification.md](./phase1-data-specification.md) |
 | Phase 2 | UI/UX仕様（閲覧・編集体験） | 完了 | [phase2-ui-ux-specification.md](./phase2-ui-ux-specification.md) |
-| Phase 3 | レイアウト計算（auto整列アルゴリズム） | 未着手 | - |
+| Phase 3 | レイアウト計算（auto整列アルゴリズム） | 完了 | [phase3-layout-calculation.md](./phase3-layout-calculation.md) |
 | Phase 4 | 埋め込み詳細（AppSheet/GAS/自作Web） | 未着手 | - |
 | Phase 5 | TBD | 未着手 | - |
 | Phase 6 | TBD | 未着手 | - |
