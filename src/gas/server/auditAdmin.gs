@@ -4,18 +4,8 @@
  * Phase5（監査）/ Phase10（運用UI）
  */
 
-// 監査ログ列マッピング
-const AUDIT_COLUMNS = {
-  'timestamp': 0,
-  'actor': 1,
-  'action': 2,
-  'page_id': 3,
-  'bp': 4,
-  'before_json': 5,
-  'after_json': 6,
-  'result': 7,
-  'message': 8
-};
+// 注意: AUDIT_COLUMNS と AUDIT_LOG_SHEET_NAME は server/save.gs で定義済み
+// GASでは全.gsファイルが同一スコープのため、ここでは再定義しない
 
 /**
  * 監査ログ一覧を取得
