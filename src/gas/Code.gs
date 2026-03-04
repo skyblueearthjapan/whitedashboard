@@ -5,6 +5,9 @@
  * GAS + HTMLService 版
  */
 
+/** 社内ポータルサイトURL（全画面共通） */
+var PORTAL_URL = 'https://script.google.com/a/macros/lineworks-local.info/s/AKfycbx2eyJMOYP9o--GPBuhY-pj071IIR6Kqb_0xALwwNzdLQZux0dIAlL3P9EoCucnzXA/exec';
+
 /**
  * Webアプリケーションのエントリポイント
  * @param {Object} e - イベントオブジェクト
@@ -66,6 +69,7 @@ function renderPortalView(pageId, isEditor) {
   // テンプレートに渡すデータ
   template.pageId = pageId;
   template.isEditor = isEditor;
+  template.PORTAL_URL = PORTAL_URL;
 
   // 設定データを取得してテンプレートに渡す
   const config = getConfig();
@@ -93,12 +97,16 @@ function renderAdminView(isEditor) {
       '<h1>アクセス権限がありません</h1>' +
       '<p>この画面はEditor権限が必要です。</p>' +
       '<p><a href="?view=portal">ポータルへ戻る</a></p>' +
+      '<div style="margin-top:12px;"><a href="' + PORTAL_URL + '" target="_top" ' +
+      'style="display:inline-block;padding:6px 12px;background:#1f9d55;color:#fff;' +
+      'border-radius:8px;font-size:13px;text-decoration:none;">社内ポータルへ移動</a></div>' +
       '</body></html>'
     ).setTitle('アクセス拒否');
   }
 
   // HTMLテンプレートを読み込み
   const template = HtmlService.createTemplateFromFile('admin');
+  template.PORTAL_URL = PORTAL_URL;
 
   // 設定データを取得し、棚卸ステータスを付与
   const config = getConfig();
@@ -127,12 +135,16 @@ function renderAdminWidgetsView(isEditor) {
       '<h1>アクセス権限がありません</h1>' +
       '<p>この画面はEditor権限が必要です。</p>' +
       '<p><a href="?view=portal">ポータルへ戻る</a></p>' +
+      '<div style="margin-top:12px;"><a href="' + PORTAL_URL + '" target="_top" ' +
+      'style="display:inline-block;padding:6px 12px;background:#1f9d55;color:#fff;' +
+      'border-radius:8px;font-size:13px;text-decoration:none;">社内ポータルへ移動</a></div>' +
       '</body></html>'
     ).setTitle('アクセス拒否');
   }
 
   // HTMLテンプレートを読み込み
   const template = HtmlService.createTemplateFromFile('admin-widgets');
+  template.PORTAL_URL = PORTAL_URL;
 
   // 設定データを取得し、棚卸ステータスを付与
   const config = getConfig();
@@ -161,12 +173,16 @@ function renderAdminPagesView(isEditor) {
       '<h1>アクセス権限がありません</h1>' +
       '<p>この画面はEditor権限が必要です。</p>' +
       '<p><a href="?view=portal">ポータルへ戻る</a></p>' +
+      '<div style="margin-top:12px;"><a href="' + PORTAL_URL + '" target="_top" ' +
+      'style="display:inline-block;padding:6px 12px;background:#1f9d55;color:#fff;' +
+      'border-radius:8px;font-size:13px;text-decoration:none;">社内ポータルへ移動</a></div>' +
       '</body></html>'
     ).setTitle('アクセス拒否');
   }
 
   // HTMLテンプレートを読み込み
   const template = HtmlService.createTemplateFromFile('admin-pages');
+  template.PORTAL_URL = PORTAL_URL;
 
   // 設定データを取得
   const config = getConfig();
@@ -194,12 +210,16 @@ function renderAdminAssetsView(isEditor) {
       '<h1>アクセス権限がありません</h1>' +
       '<p>この画面はEditor権限が必要です。</p>' +
       '<p><a href="?view=portal">ポータルへ戻る</a></p>' +
+      '<div style="margin-top:12px;"><a href="' + PORTAL_URL + '" target="_top" ' +
+      'style="display:inline-block;padding:6px 12px;background:#1f9d55;color:#fff;' +
+      'border-radius:8px;font-size:13px;text-decoration:none;">社内ポータルへ移動</a></div>' +
       '</body></html>'
     ).setTitle('アクセス拒否');
   }
 
   // HTMLテンプレートを読み込み
   const template = HtmlService.createTemplateFromFile('admin-assets');
+  template.PORTAL_URL = PORTAL_URL;
 
   // 設定データを取得
   const config = getConfig();
@@ -227,12 +247,16 @@ function renderAdminHtmlView(isEditor) {
       '<h1>アクセス権限がありません</h1>' +
       '<p>この画面はEditor権限が必要です。</p>' +
       '<p><a href="?view=portal">ポータルへ戻る</a></p>' +
+      '<div style="margin-top:12px;"><a href="' + PORTAL_URL + '" target="_top" ' +
+      'style="display:inline-block;padding:6px 12px;background:#1f9d55;color:#fff;' +
+      'border-radius:8px;font-size:13px;text-decoration:none;">社内ポータルへ移動</a></div>' +
       '</body></html>'
     ).setTitle('アクセス拒否');
   }
 
   // HTMLテンプレートを読み込み
   const template = HtmlService.createTemplateFromFile('admin-html');
+  template.PORTAL_URL = PORTAL_URL;
 
   // 設定データを取得
   const config = getConfig();
@@ -260,12 +284,16 @@ function renderAdminAuditView(isEditor) {
       '<h1>アクセス権限がありません</h1>' +
       '<p>この画面はEditor権限が必要です。</p>' +
       '<p><a href="?view=portal">ポータルへ戻る</a></p>' +
+      '<div style="margin-top:12px;"><a href="' + PORTAL_URL + '" target="_top" ' +
+      'style="display:inline-block;padding:6px 12px;background:#1f9d55;color:#fff;' +
+      'border-radius:8px;font-size:13px;text-decoration:none;">社内ポータルへ移動</a></div>' +
       '</body></html>'
     ).setTitle('アクセス拒否');
   }
 
   // HTMLテンプレートを読み込み
   const template = HtmlService.createTemplateFromFile('admin-audit');
+  template.PORTAL_URL = PORTAL_URL;
 
   // HTMLを生成
   const output = template.evaluate()

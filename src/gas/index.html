@@ -49,6 +49,23 @@
       opacity: 0.8;
     }
 
+    .portal-link {
+      display: inline-block;
+      font-size: 13px;
+      padding: 6px 12px;
+      border-radius: 8px;
+      border: 1px solid #1f9d55;
+      background: #1f9d55;
+      color: #fff;
+      text-decoration: none;
+    }
+
+    .portal-link:hover {
+      background: #177a43;
+      color: #fff;
+      text-decoration: none;
+    }
+
     /* ========================================
        ツールバー（BP切替 + ページタブ）
     ======================================== */
@@ -824,7 +841,10 @@
   <!-- ヘッダー -->
   <header class="header">
     <h1 id="page-title">ポータルダッシュボード</h1>
-    <span class="header-meta" id="header-meta"></span>
+    <div style="display:flex;align-items:center;gap:16px;">
+      <span class="header-meta" id="header-meta"></span>
+      <a href="<?= PORTAL_URL ?>" target="_top" class="portal-link">社内ポータルへ移動</a>
+    </div>
   </header>
 
   <!-- ツールバー -->

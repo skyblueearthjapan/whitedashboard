@@ -64,6 +64,21 @@
       text-decoration: none;
     }
 
+    .portal-link {
+      background: #1f9d55;
+      color: #fff !important;
+      padding: 6px 12px;
+      border-radius: 8px;
+      border: 1px solid #1f9d55;
+      font-size: 13px;
+      opacity: 1 !important;
+    }
+
+    .portal-link:hover {
+      background: #177a43;
+      border-color: #177a43;
+    }
+
     /* ========================================
        メインコンテンツ
     ======================================== */
@@ -380,6 +395,7 @@
       <a href="?view=admin_audit">監査ログ</a>
       <a href="?view=portal">ポータルへ戻る</a>
       <a href="#" onclick="location.reload()">更新</a>
+      <a href="<?= PORTAL_URL ?>" target="_top" class="portal-link">社内ポータルへ移動</a>
     </nav>
   </header>
 
